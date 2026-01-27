@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>町家の日 AR（GPS指定版）</title>
+    
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+    <style>
+      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      
+      /* デバッグ用パネル（動作確認用） */
+      #debug-panel {
+        position: fixed; top: 10px; left: 10px;
+        background: rgba(0, 0, 0, 0.6); color: white;
+        padding: 10px; border-radius: 5px; z-index: 9999;
+        font-size: 12px; pointer-events: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="debug-panel">
+      GPS信号を取得中...<br>
+      指定座標: 34.827083, 134.680000
+    </div>
+
+    <a-scene
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+      embedded
+      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+
+      <a-assets>
+        <a-asset-item id="model-glb" src="./model.glb"></a-asset-item>
+      </a-assets>
+
+      <a-entity
+        gltf-model="#model-glb"
+        gps-entity-place="latitude: 34.827083; longitude: 134.680000;"
+        scale="1 1 1"
+        position="0 0 0"
+        animation-mixer>
+      </a-entity>
+
+      <a-camera gps-camera="minDistance: 5; maxDistance: 1000" rotation-reader></a-camera>
+
+    </a-scene>
+
+    <script>
+      // 動作状況のログ表示
+      window.addEventListener('load', () => {
+        const debugPanel = document.getElementById('debug-panel');
+        
+        // GPS更新イベント
+        window.addEventListener('gps-camera-update-position', (e) => {
+          debugPanel.innerHTML = "GPS追跡中...<br>モデルを探してください";
+        });
+
+        // エラーハンドリング
+        if (!navigator.geolocation) {
+          debugPanel.innerHTML = "エラー: GPSが使えません。設定を確認してください。";
+        }
+      });
+    </script>
+  </body>
+</html>
