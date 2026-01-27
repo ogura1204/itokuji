@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR（POP2 GLB化版）</title>
+    <title>町家の日 AR（1/271309）</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
@@ -80,7 +80,9 @@
       
       <a-assets>
         <img id="img-pers-1" src="./pers_1.png" />
-        <a-asset-item id="model-building" src="./building.glb"></a-asset-item>
+        
+        <a-asset-item id="model-glb" src="./model.glb"></a-asset-item>
+        
         <img id="img-magic-circle" src="./magic_circle.png" />
       </a-assets>
 
@@ -101,7 +103,7 @@
       </a-entity>
 
       <a-entity id="target-pop2" mindar-image-target="targetIndex: 1">
-        <a-entity gltf-model="#model-building" 
+        <a-entity gltf-model="#model-glb" 
                   scale="0.5 0.5 0.5" 
                   position="0 0 0" 
                   rotation="0 0 0"
@@ -130,7 +132,6 @@
       const footerFrame = document.getElementById('footer-frame');
       
       const targetPop2 = document.getElementById('target-pop2');
-      // 動画用の変数は削除しました
       
       const targetOutside = document.getElementById('target-outside');
       const outsideOverlay = document.getElementById('outside-overlay');
@@ -141,7 +142,6 @@
       const textRing = document.getElementById('circular-text-ring');
       
       const sceneEl = document.querySelector('a-scene');
-      let rollTimer = null;
 
       sceneEl.addEventListener('arReady', () => {
         loadingDiv.style.opacity = 0;
@@ -176,7 +176,8 @@
 
       footerFrame.addEventListener('click', () => { window.open('https://lykke-hygge-2.myshopify.com/', '_blank'); });
 
-      // 外観
+      // 外観（エンドロール）
+      let rollTimer = null;
       function startRoll() {
         creditContent.classList.remove('animate-roll');
         void creditContent.offsetWidth;
