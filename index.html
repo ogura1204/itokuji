@@ -7,68 +7,84 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
     <script>
-      // ▼▼▼ 自動スライドショーコンポーネント ▼▼▼
-      // 画像リストを受け取り、一定時間ごとにふわっと切り替える機能
+      // ▼▼▼ 修正版：確実なスライドショーコンポーネント ▼▼▼
       AFRAME.registerComponent('auto-slideshow', {
         schema: {
-          srcs: { type: 'array' }, // 画像IDのリスト
-          interval: { type: 'number', default: 4000 } // 切り替え間隔(ミリ秒)
+          srcs: { type: 'array' }, // 画像IDリスト
+          interval: { type: 'number', default: 3000 } // 画像が表示されている時間
         },
         init: function () {
           this.el.setAttribute('src', this.data.srcs[0]);
+          this.el.setAttribute('material', 'transparent: true; opacity: 1'); // 初期状態は不透明
           this.index = 0;
           this.timer = null;
-          
-          // フェードアニメーション用の設定
-          this.el.setAttribute('animation__fade', {
-            property: 'material.opacity',
-            dir: 'alternate',
-            dur: 500,
-            loop: false,
-            autoplay: false
-          });
+          this.isAnimating = false;
         },
         play: function() {
           if (this.timer) return;
+          // 指定時間ごとに切り替え処理を開始
           this.timer = setInterval(() => {
-            this.nextSlide();
-          }, this.data.interval);
+            this.transition();
+          }, this.data.interval + 2000); // 表示時間 + アニメーション時間(2秒)
         },
         pause: function() {
           if (this.timer) clearInterval(this.timer);
           this.timer = null;
+          // 停止時は不透明に戻して表示を維持
+          this.el.setAttribute('animation', 'property: material.opacity; to: 1; dur: 100');
         },
-        nextSlide: function () {
-          // フェードアウト
+        transition: function () {
+          if (this.isAnimating) return;
+          this.isAnimating = true;
           const el = this.el;
-          el.setAttribute('animation__fade', { to: 0, dir: 'normal', dur: 500 });
-          el.components.animation__fade.beginAnimation();
 
+          // 1. フェードアウト (1秒かけて透明に)
+          el.removeAttribute('animation'); // 前のアニメーションをクリア
+          el.setAttribute('animation', {
+            property: 'material.opacity',
+            from: 1,
+            to: 0,
+            dur: 1000,
+            easing: 'easeInOutQuad'
+          });
+
+          // 2. 画像切り替え (1秒後)
           setTimeout(() => {
-            // 画像切り替え
             this.index = (this.index + 1) % this.data.srcs.length;
             el.setAttribute('src', this.data.srcs[this.index]);
             
-            // アスペクト比調整（簡易版）
+            // アスペクト比修正
             const img = document.querySelector(this.data.srcs[this.index]);
             if(img && img.naturalWidth) {
                 const ratio = img.naturalHeight / img.naturalWidth;
                 el.setAttribute('height', ratio);
             }
 
-            // フェードイン
-            el.setAttribute('animation__fade', { to: 1, dir: 'reverse', dur: 500 });
-            el.components.animation__fade.beginAnimation();
-          }, 500);
+            // 3. フェードイン (さらに1秒かけて不透明に)
+            el.removeAttribute('animation');
+            el.setAttribute('animation', {
+              property: 'material.opacity',
+              from: 0,
+              to: 1,
+              dur: 1000,
+              easing: 'easeInOutQuad'
+            });
+
+            // アニメーション完了フラグ解除
+            setTimeout(() => {
+                this.isAnimating = false;
+            }, 1000);
+
+          }, 1000); // フェードアウト待ち時間
         }
       });
     </script>
 
     <style>
-      /* ベースデザイン：高級感のある明朝体 */
+      /* 全体デザイン：高級感のある明朝体・黒ベース */
       body { margin: 0; overflow: hidden; font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif; background: #000; }
 
-      /* ローディング画面：シンプルかつエレガントに */
+      /* ローディング画面 */
       #loading {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background-color: #0a0a0a; z-index: 99999;
@@ -77,8 +93,8 @@
       }
       .loader {
         width: 50px; height: 50px;
-        border: 1px solid rgba(197, 160, 89, 0.3); /* シャンパンゴールド */
-        border-top: 1px solid #C5A059;
+        border: 1px solid rgba(197, 160, 89, 0.3);
+        border-top: 1px solid #C5A059; /* シャンパンゴールド */
         border-radius: 50%;
         animation: spin 1.5s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
       }
@@ -87,7 +103,7 @@
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-      /* フッター：ガラスモーフィズムで現代的に */
+      /* フッター */
       #footer-frame {
         position: fixed; bottom: 0; left: 0; width: 100%; height: 80px;
         background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(10px);
@@ -100,7 +116,7 @@
         font-weight: 300; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
       }
       
-      /* スキャンガイド：初心者向けの案内 */
+      /* スキャンガイド */
       #scan-guide {
         position: fixed; top: 20px; width: 100%; text-align: center;
         color: rgba(255,255,255,0.7); font-size: 11px; letter-spacing: 2px;
@@ -130,14 +146,19 @@
       device-orientation-permission-ui="enabled: false">
       
       <a-assets>
-        <img id="bldg1-1" src="./pers_1.png" /> <img id="bldg1-2" src="./pers_1_sub1.png" /> <img id="bldg1-3" src="./pers_1_sub2.png" />
-        <img id="bldg2-1" src="./pers_2.png" /> <img id="bldg2-2" src="./pers_2_sub1.png" /> <img id="bldg2-3" src="./pers_2_sub2.png" />
-        <img id="img-magic-circle" src="./magic_circle.png" />
+        <img id="bldg1-1" src="./pers_1.png" />
+        <img id="bldg1-2" src="./pers_1_sub1.png" /> 
+        <img id="bldg1-3" src="./pers_1_sub2.png" /> 
+
+        <img id="bldg2-1" src="./pers_2.png" /> 
+        <img id="bldg2-2" src="./pers_2_sub1.png" />
+        <img id="bldg2-3" src="./pers_2_sub2.png" />
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
+        
         <a-plane color="black" opacity="0.6" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
         
         <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
@@ -145,7 +166,7 @@
         
         <a-image id="slideshow-1" 
                  position="0 0 0" width="1" height="0.75"
-                 auto-slideshow="srcs: #bldg1-1, #bldg1-2, #bldg1-3; interval: 3500">
+                 auto-slideshow="srcs: #bldg1-1, #bldg1-2, #bldg1-3; interval: 3000">
         </a-image>
 
         <a-text value="BUILDING A - EXTERIOR" align="center" position="0 -0.65 0" width="3" color="#ffffff" font="roboto"></a-text>
@@ -159,40 +180,19 @@
 
         <a-image id="slideshow-2" 
                  position="0 0 0" width="1" height="0.75"
-                 auto-slideshow="srcs: #bldg2-1, #bldg2-2, #bldg2-3; interval: 3500">
+                 auto-slideshow="srcs: #bldg2-1, #bldg2-2, #bldg2-3; interval: 3000">
         </a-image>
 
         <a-text value="BUILDING B - INTERIOR" align="center" position="0 -0.65 0" width="3" color="#ffffff" font="roboto"></a-text>
       </a-entity>
 
-
-      <a-entity id="target-card" mindar-image-target="targetIndex: 2">
-        <a-entity id="magic-circle-container" scale="0 0 0"
-                  animation__appear="property: scale; to: 0.6 0.6 0.6; dur: 2000; easing: easeOutCubic; startEvents: appear"
-                  animation__disappear="property: scale; to: 0 0 0; dur: 500; easing: easeInQuad; startEvents: disappear">
-            
-            <a-image src="#img-magic-circle" width="2" height="2" opacity="0.9"
-                     animation="property: rotation; to: 0 0 -360; dur: 60000; loop: true; easing: linear"></a-image>
-            
-            <a-entity id="circular-text-ring" 
-                      animation="property: rotation; to: 0 0 360; dur: 40000; loop: true; easing: linear">
-            </a-entity>
-        </a-entity>
-      </a-entity>
-
-    </a-scene>
+      </a-scene>
 
     <script>
       const loadingDiv = document.getElementById('loading');
       const footerFrame = document.getElementById('footer-frame');
       const sceneEl = document.querySelector('a-scene');
 
-      // ターゲットごとの制御
-      const targetCard = document.getElementById('target-card');
-      const magicCircle = document.getElementById('magic-circle-container');
-      const textRing = document.getElementById('circular-text-ring');
-      
-      // スライドショーの要素
       const slide1 = document.getElementById('slideshow-1');
       const slide2 = document.getElementById('slideshow-2');
 
@@ -200,58 +200,30 @@
       sceneEl.addEventListener('arReady', () => {
         loadingDiv.style.opacity = 0;
         setTimeout(() => { loadingDiv.style.display = 'none'; }, 1200);
-        createCircularText();
       });
 
-      // ターゲット認識時のイベント制御（ターゲットが外れたらスライドショーも一時停止して負荷を下げる）
+      // ターゲット認識時のイベント制御
       const targets = [
           { el: document.querySelector('[mindar-image-target="targetIndex: 0"]'), content: slide1 },
           { el: document.querySelector('[mindar-image-target="targetIndex: 1"]'), content: slide2 }
       ];
 
       targets.forEach(t => {
+          if(!t.el) return;
           t.el.addEventListener('targetFound', () => {
+              // ターゲットを見つけたら再生開始
               if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].play();
           });
           t.el.addEventListener('targetLost', () => {
+              // ターゲットを見失ったら停止
               if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].pause();
           });
       });
-
-      // 魔法陣ターゲット制御
-      targetCard.addEventListener('targetFound', () => { magicCircle.emit('appear'); });
-      targetCard.addEventListener('targetLost', () => { magicCircle.emit('disappear'); });
 
       // フッターリンク
       footerFrame.addEventListener('click', () => {
         window.open('https://lykke-hygge-2.myshopify.com/', '_blank'); 
       });
-
-      // 円形テキスト生成 (美しいタイポグラフィ配置)
-      function createCircularText() {
-        const text = "We look forward to working with you. ";
-        const radius = 1.35;
-        const totalChars = text.length;
-        const angleStep = 360 / totalChars;
-
-        for (let i = 0; i < totalChars; i++) {
-          const char = text[i];
-          const angle = i * angleStep;
-          
-          const pivot = document.createElement('a-entity');
-          pivot.setAttribute('rotation', `0 0 ${-angle}`);
-          
-          const textEl = document.createElement('a-text');
-          textEl.setAttribute('value', char);
-          textEl.setAttribute('align', 'center');
-          textEl.setAttribute('color', '#ffffff');
-          textEl.setAttribute('width', '5');
-          textEl.setAttribute('position', `0 ${radius} 0`);
-          
-          pivot.appendChild(textEl);
-          textRing.appendChild(pivot);
-        }
-      }
     </script>
   </body>
 </html>
