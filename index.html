@@ -2,15 +2,17 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR（位置補正版）</title>
+    <title>町家の日 AR（標準版）</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
       body { margin: 0; overflow: hidden; font-family: "Yu Mincho", serif; }
+      /* ローディング画面 */
       #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 99999; display: flex; justify-content: center; align-items: center; }
       .loader { border: 2px solid rgba(255,255,255,0.1); border-left-color: #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      /* フッター */
       #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; }
       .f-text { color: white; font-size: 12px; }
     </style>
@@ -18,7 +20,7 @@
   <body>
 
     <div id="loading"><div class="loader"></div></div>
-    <div id="footer-frame"><div class="f-text">Location Corrected</div></div>
+    <div id="footer-frame"><div class="f-text">Tap to Open Shop</div></div>
 
     <a-scene 
       mindar-image="imageTargetSrc: ./targets-2.mind; uiError:yes; uiLoading:no;" 
@@ -44,21 +46,18 @@
 
       <a-entity id="target-pop2" mindar-image-target="targetIndex: 1">
         
-        <a-box color="blue" opacity="0.3" position="0 0 0" scale="0.5 0.5 0.5"></a-box>
+        <a-box color="blue" opacity="0.3" position="0 0 0" scale="0.1 0.1 0.1"></a-box>
 
-        <a-entity id="model-wrapper" position="0 0 0" rotation="0 0 0">
-            
-            <a-entity gltf-model="#model-glb" 
-                      position="-29 0.5 -2" 
-                      scale="1 1 1"
-                      rotation="0 0 0">
-            </a-entity>
-
+        <a-entity gltf-model="#model-glb" 
+                  position="0 0 0" 
+                  rotation="0 0 0" 
+                  scale="0.5 0.5 0.5">
         </a-entity>
 
       </a-entity>
 
       <a-entity id="target-outside" mindar-image-target="targetIndex: 2"></a-entity>
+
       <a-entity id="target-card" mindar-image-target="targetIndex: 3">
         <a-entity id="magic-circle-container" scale="0 0 0"
                   animation__appear="property: scale; to: 0.6 0.6 0.6; dur: 2000; easing: easeOutCubic; startEvents: appear"
@@ -72,6 +71,7 @@
     </a-scene>
 
     <script>
+      // 初期ロード処理
       const loadingDiv = document.getElementById('loading');
       const sceneEl = document.querySelector('a-scene');
       sceneEl.addEventListener('arReady', () => {
@@ -79,6 +79,7 @@
         createCircularText();
       });
 
+      // 円形テキスト生成ロジック
       const textRing = document.getElementById('circular-text-ring');
       function createCircularText() {
         if(!textRing) return;
@@ -102,6 +103,7 @@
         }
       }
       
+      // ターゲット認識イベント（魔法陣用）
       const targetCard = document.getElementById('target-card');
       const magicCircle = document.getElementById('magic-circle-container');
       if(targetCard && magicCircle){
@@ -109,6 +111,7 @@
           targetCard.addEventListener('targetLost', () => { magicCircle.emit('disappear'); });
       }
       
+      // フッタークリックイベント
       const footerFrame = document.getElementById('footer-frame');
       if(footerFrame) footerFrame.addEventListener('click', () => { window.open('https://lykke-hygge-2.myshopify.com/', '_blank'); });
     </script>
