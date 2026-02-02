@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
     <script>
-      // 1. ジェスチャー検出コンポーネント
+      // 1. ジェスチャー検出
       AFRAME.registerComponent("gesture-detector", {
         schema: { element: { default: "" } },
         init: function() {
@@ -30,7 +30,6 @@
           const gestureContinues = previousState && currentState && currentState.touchCount == previousState.touchCount;
           const gestureEnded = previousState && !gestureContinues;
           const gestureStarted = currentState && !gestureContinues;
-
           if (gestureEnded) { this.el.emit("gesture-end"); }
           if (gestureStarted) { this.el.emit("gesture-start"); }
           if (gestureContinues) {
@@ -56,7 +55,7 @@
         }
       });
 
-      // 2. ジェスチャー操作コンポーネント（回転・拡大縮小）
+      // 2. ジェスチャー操作
       AFRAME.registerComponent("gesture-handler", {
         schema: {
           enabled: { default: true },
@@ -70,10 +69,7 @@
           this.isVisible = false;
           this.initialScale = this.el.object3D.scale.clone();
           this.scaleFactor = 1;
-          
-          this.el.sceneEl.addEventListener("gesture-detector", (evt) => {
-             // イベントリスナーの登録タイミングを保証
-          });
+          this.el.sceneEl.addEventListener("gesture-detector", (evt) => {});
           this.el.sceneEl.addEventListener("twofingermove", this.handleScale);
           this.el.sceneEl.addEventListener("onefingermove", this.handleRotation);
         },
@@ -84,8 +80,6 @@
         handleRotation: function(event) {
           if (this.isVisible) {
             this.el.object3D.rotation.y += event.detail.positionChange.x * this.data.rotationFactor * 0.001;
-            // 縦回転もしたい場合は以下を有効化
-            // this.el.object3D.rotation.x += event.detail.positionChange.y * this.data.rotationFactor * 0.001;
           }
         },
         handleScale: function(event) {
@@ -105,8 +99,6 @@
       #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 99999; display: flex; justify-content: center; align-items: center; pointer-events: none; }
       .loader { border: 2px solid rgba(255,255,255,0.1); border-left-color: #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      
-      /* フッター設定：全体はタッチ透過、文字だけタッチ可能にする */
       #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; pointer-events: none; }
       .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
     </style>
@@ -119,7 +111,7 @@
     <a-scene 
       mindar-image="imageTargetSrc: ./targets-2.mind; uiError:yes; uiLoading:no;" 
       color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
+      renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;" 
       vr-mode-ui="enabled: false" 
       device-orientation-permission-ui="enabled: false"
       gesture-detector>
@@ -135,8 +127,13 @@
                 raycaster="objects: .clickable">
       </a-camera>
 
-      <a-light type="ambient" color="#BBB" intensity="1"></a-light>
-      <a-light type="directional" color="#FFF" intensity="1.5" position="-0.5 1 1"></a-light>
+      <a-light type="hemisphere" skyColor="#ffffff" groundColor="#444444" intensity="1.2"></a-light>
+
+      <a-light type="directional" color="#ffffff" intensity="2.0" position="2 4 4"></a-light>
+
+      <a-light type="directional" color="#ffeedd" intensity="2.0" position="-2 3 -5"></a-light>
+
+      <a-light type="directional" color="#dbeeff" intensity="0.8" position="-4 2 2"></a-light>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-image id="ar-image-1" src="#img-pers-1" position="0 0 0" width="1"></a-image>
@@ -147,8 +144,8 @@
         <a-entity id="my-model"
                   gltf-model="#model-glb" 
                   position="0 -1 0" 
-                  rotation="2 0 0" 
-                  scale="0.2 0.2 0.2"
+                  rotation="3 0 0" 
+                  scale="0.3 0.3 0.3"
                   class="clickable"
                   gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5">
         </a-entity>
@@ -173,7 +170,6 @@
       const loadingDiv = document.getElementById('loading');
       const sceneEl = document.querySelector('a-scene');
       
-      // モデルが「見えているとき」だけ操作できるようにする制御
       const targetEntity = document.getElementById('target-pop2');
       const modelEntity = document.getElementById('my-model');
 
