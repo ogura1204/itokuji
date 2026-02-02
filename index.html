@@ -138,29 +138,29 @@
 
       <a-entity id="target-pop2" mindar-image-target="targetIndex: 1">
         
-        <a-entity id="msg-panel-container" position="0 1.2 0" scale="0 0 0"
-                  animation__appear="property: scale; to: 1 1 1; dur: 1500; easing: easeOutQuint; startEvents: showMsg"
-                  animation__disappear="property: scale; to: 0 0 0; dur: 500; easing: easeInQuad; startEvents: hideMsg">
+        <a-entity id="msg-panel-container" position="0 1.0 0" scale="0 0 0"
+                  animation__appear="property: scale; to: 1 1 1; dur: 1000; easing: easeOutElastic; startEvents: showMsg"
+                  animation__disappear="property: scale; to: 0 0 0; dur: 300; easing: easeInQuad; startEvents: hideMsg">
             
-            <a-entity animation="property: position; to: 0 0.05 0; dir: alternate; dur: 3500; loop: true; easing: easeInOutSine">
+            <a-entity animation="property: position; to: 0 0.1 0; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
                 
-                <a-text value="2026.8" align="center" color="#FFFFFF" width="7" position="0 0.15 0" 
-                        font="exo2" shader="msdf"></a-text>
+                <a-plane color="black" opacity="0.7" width="1.8" height="0.6" position="0 0 0"></a-plane>
                 
-                <a-entity geometry="primitive: plane; width: 2.2; height: 0.008" 
-                          material="color: #C5A059; shader: flat" 
-                          position="0 0 0"></a-entity>
+                <a-plane color="#ffffff" width="1.6" height="0.02" position="0 -0.2 0.01"></a-plane>
 
-                <a-text value="GRAND OPEN" align="center" color="#C5A059" width="3.5" position="0 -0.15 0" 
-                        font="exo2" shader="msdf" letter-spacing="5"></a-text>
+                <a-text value="2026.8" align="center" color="#ffffff" width="5" position="0 0.12 0.01" 
+                        font="roboto" shader="msdf"></a-text>
+                
+                <a-text value="GRAND OPEN" align="center" color="#FFD700" width="4" position="0 -0.05 0.01" 
+                        font="roboto" shader="msdf" letter-spacing="2"></a-text>
 
             </a-entity>
         </a-entity>
         <a-entity id="my-model"
                   gltf-model="#model-glb" 
-                  position="0 -0.5 0" 
+                  position="0 -1 0" 
                   rotation="0 0 0" 
-                  scale="0.2 0.2 0.2"
+                  scale="0.3 0.3 0.3"
                   class="clickable"
                   gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5">
         </a-entity>
