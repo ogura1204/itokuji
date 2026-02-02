@@ -2,9 +2,11 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR（標準版）</title>
+    <title>町家の日 AR（操作・調整版）</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    
+    <script src="https://raw.githack.com/fcor/arjs-gestures/master/dist/gestures.js"></script>
     
     <style>
       body { margin: 0; overflow: hidden; font-family: "Yu Mincho", serif; }
@@ -27,11 +29,12 @@
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights" 
       vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
+      device-orientation-permission-ui="enabled: false"
+      gesture-detector>
       
       <a-assets>
         <img id="img-pers-1" src="./pers_1.png" />
-        <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
+        <a-asset-item id="model-glb" src="./model.glb"></a-asset-item>
         <img id="img-magic-circle" src="./magic_circle.png" />
       </a-assets>
 
@@ -49,9 +52,11 @@
         <a-box color="blue" opacity="0.3" position="0 0 0" scale="0.1 0.1 0.1"></a-box>
 
         <a-entity gltf-model="#model-glb" 
-                  position="0 0 0" 
-                  rotation="0 0 0" 
-                  scale="0.5 0.5 0.5">
+                  position="0 -1 0" 
+                  rotation="90 0 0" 
+                  scale="0.5 0.5 0.5"
+                  class="clickable"
+                  gesture-handler="minFinger: 1; maxFinger: 2;">
         </a-entity>
 
       </a-entity>
@@ -79,7 +84,7 @@
         createCircularText();
       });
 
-      // 円形テキスト生成ロジック
+      // 円形テキスト生成
       const textRing = document.getElementById('circular-text-ring');
       function createCircularText() {
         if(!textRing) return;
@@ -103,7 +108,7 @@
         }
       }
       
-      // ターゲット認識イベント（魔法陣用）
+      // ターゲット認識イベント
       const targetCard = document.getElementById('target-card');
       const magicCircle = document.getElementById('magic-circle-container');
       if(targetCard && magicCircle){
