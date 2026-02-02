@@ -2,92 +2,47 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 GPS AR (診断版)</title>
+    <title>町家の日 AR (強制配置版)</title>
     
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     
-    <script>
-      // 距離計算システム（修正版）
-      AFRAME.registerComponent('gps-debug-system', {
-        init: function() {
-          this.debugInfo = document.getElementById('debug-info');
-          this.gpsStatus = document.getElementById('gps-status');
-          this.camera = null;
-          this.target = null;
-        },
-        tick: function() {
-          if (!this.camera) this.camera = document.querySelector('[gps-camera]');
-          if (!this.target) this.target = document.querySelector('[gps-entity-place]');
-          
-          if (this.camera && this.target && this.debugInfo) {
-            // カメラの位置情報を取得できているか確認
-            const camPos = this.camera.getAttribute('position');
-            const gpsPos = this.camera.components['gps-camera'];
-            
-            if (gpsPos && gpsPos.originCoords) {
-                // 距離計算
-                const distance = this.camera.components['gps-camera'].distanceTo(this.target.components['gps-entity-place'].coords);
-                this.debugInfo.innerText = `Distance: ${Math.floor(distance)} m`;
-                this.debugInfo.style.color = "lime";
-            } else {
-                this.debugInfo.innerText = "Distance: Waiting GPS...";
-                this.debugInfo.style.color = "yellow";
-            }
-          }
-        }
-      });
-
-      // モデル読み込み確認用
-      AFRAME.registerComponent('model-loader', {
-        init: function () {
-          this.el.addEventListener('model-loaded', () => {
-            console.log("Model loaded successfully");
-            // モデルが読み込まれたらデバッグ表示
-            const debugText = document.getElementById('model-status');
-            if(debugText) debugText.innerText = "Model: OK";
-          });
-          this.el.addEventListener('model-error', (e) => {
-            console.error("Model error", e);
-            const debugText = document.getElementById('model-status');
-            if(debugText) {
-                debugText.innerText = "Model: Error!";
-                debugText.style.color = "red";
-            }
-            alert("モデルの読み込みに失敗しました。通信環境を確認してください。");
-          });
-        }
-      });
-    </script>
-
     <style>
       body { margin: 0; overflow: hidden; font-family: sans-serif; }
       
-      /* デバッグパネル（左上） */
-      #debug-panel {
-        position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; z-index: 9999; border-radius: 5px; font-size: 12px; pointer-events: none;
-      }
-      
-      /* テストボタン（右上） */
-      #test-btn {
-        position: fixed; top: 10px; right: 10px; background: #007BFF; color: white; padding: 10px 20px; z-index: 9999; border: none; border-radius: 5px; font-weight: bold; font-size: 14px;
+      /* 診断用パネル */
+      #info-panel {
+        position: fixed; top: 0; left: 0; width: 100%;
+        background: rgba(0,0,0,0.8); color: lime;
+        padding: 5px; font-size: 11px; z-index: 9999;
+        pointer-events: none;
+        white-space: pre-wrap;
       }
 
+      /* 強制配置ボタン（赤） */
+      #spawn-btn {
+        position: fixed; top: 60px; right: 10px;
+        background: #dc3545; color: white;
+        padding: 15px 20px; border: none; border-radius: 30px;
+        font-weight: bold; font-size: 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        z-index: 9999;
+      }
+      
       #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; }
       .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
     </style>
   </head>
   
   <body>
-    <div id="debug-panel">
-        <div id="gps-status">GPS: Initializing...</div>
-        <div id="debug-info">Distance: --- m</div>
-        <div id="model-status">Model: Loading...</div>
+    <div id="info-panel">
+GPS: Initializing...
+Target: 34.827494, 134.680157
+Model Status: Loading...
     </div>
 
-    <button id="test-btn" onclick="toggleTest()">モード切替: GPS</button>
+    <button id="spawn-btn" onclick="forceSpawn()">📍 ここにモデルを置く</button>
 
     <div id="footer-frame"><div class="f-text" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Tap to Open Shop</div></div>
 
@@ -95,76 +50,116 @@
       vr-mode-ui="enabled: false"
       embedded
       arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
-      renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;"
-      gps-debug-system>
+      renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;">
 
       <a-assets>
         <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera gps-camera="gpsMinDistance: 0;" rotation-reader near="0.1" far="50000">
-          
-          <a-entity id="test-hud" visible="false" position="0 0 -1">
-              <a-plane color="red" shader="flat" width="0.2" height="0.2" position="0 0 0"></a-plane>
-              <a-text value="TEST MODE OK" color="white" align="center" position="0 -0.15 0" scale="0.5 0.5 0.5"></a-text>
-          </a-entity>
-
+      <a-camera gps-camera="gpsMinDistance: 0;" rotation-reader near="0.1" far="10000">
       </a-camera>
 
-      <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
-      <a-light type="directional" color="#ffffff" intensity="2.0" position="1 1 1"></a-light>
+      <a-light type="ambient" color="#ffffff" intensity="2.0"></a-light>
+      <a-light type="directional" color="#ffffff" intensity="2.0" position="0 10 0"></a-light>
 
-      <a-entity id="gps-target" gps-entity-place="latitude: 34.82749460261197; longitude: 134.68015716788724;">
+      <a-entity id="move-container" position="0 -1000 0" visible="false">
+          
+          <a-box color="cyan" position="0 2 0" scale="0.5 4 0.5" material="opacity: 0.8"></a-box>
+          <a-text value="HERE!" color="white" align="center" position="0 4.5 0" scale="3 3 3" look-at="[gps-camera]"></a-text>
 
-        <a-entity position="0 0 0" scale="1 1 1">
+          <a-entity position="0 5 0" scale="2 2 2" look-at="[gps-camera]">
+              <a-plane color="black" opacity="0.6" width="2" height="0.8"></a-plane>
+              <a-text value="2026.8 OPEN" align="center" width="6" position="0 0 0.1"></a-text>
+          </a-entity>
 
-            <a-box color="blue" position="2 0 0" scale="2 10 2" material="opacity: 0.7"></a-box>
-            <a-text value="GPS TARGET" color="white" position="2 6 0" align="center" scale="5 5 5" look-at="[gps-camera]"></a-text>
-
-            <a-entity position="0 8 0" scale="3 3 3" look-at="[gps-camera]">
-                <a-plane color="black" opacity="0.7" width="1.8" height="0.6"></a-plane>
-                <a-text value="2026.8 OPEN" align="center" color="#ffffff" width="5" position="0 0 0.1"></a-text>
-            </a-entity>
-
-            <a-entity id="my-model"
-                      gltf-model="#model-glb" 
-                      position="0 0 0" 
-                      scale="5 5 5"
-                      model-loader>
-            </a-entity>
-
-        </a-entity>
+          <a-entity id="my-model"
+                    gltf-model="#model-glb" 
+                    position="0 0 0" 
+                    scale="5 5 5"
+                    animation="property: rotation; to: 0 360 0; dur: 20000; loop: true; easing: linear">
+          </a-entity>
       </a-entity>
 
     </a-scene>
 
     <script>
-      // GPSイベント
-      window.addEventListener('gps-camera-update-position', function(e) {
-        const status = document.getElementById('gps-status');
-        if(status) {
-            status.innerText = "GPS: Active";
-            status.style.color = "lime";
-        }
+      // ログ出力用
+      const infoPanel = document.getElementById('info-panel');
+      function log(text) {
+          const current = infoPanel.innerText;
+          // 10行以上ならカット
+          const lines = current.split('\n');
+          if (lines.length > 8) lines.shift();
+          infoPanel.innerText = lines.join('\n') + '\n' + text;
+      }
+
+      // 1. モデル読み込み確認
+      document.querySelector('a-scene').addEventListener('loaded', () => {
+          log("Scene Loaded.");
+      });
+      document.querySelector('#model-glb').addEventListener('loaded', () => {
+          log("Model: Loaded OK ✅");
+      });
+      document.querySelector('#model-glb').addEventListener('error', (e) => {
+          log("Model: Load ERROR ❌");
       });
 
-      // テストモード切替（安全版）
-      let isTest = false;
-      function toggleTest() {
-          isTest = !isTest;
-          const hud = document.getElementById('test-hud');
-          const btn = document.getElementById('test-btn');
+      // 2. GPS生データの監視
+      window.addEventListener('gps-camera-update-position', function(e) {
+          // 自分の位置
+          const myLat = e.detail.position.latitude.toFixed(6);
+          const myLon = e.detail.position.longitude.toFixed(6);
           
-          if(isTest) {
-              // 単純にカメラの前の赤い板を表示するだけ（フリーズしない）
-              hud.setAttribute('visible', 'true');
-              btn.innerText = "モード切替: テスト中";
-              btn.style.background = "#dc3545";
-          } else {
-              hud.setAttribute('visible', 'false');
-              btn.innerText = "モード切替: GPS";
-              btn.style.background = "#007BFF";
-          }
+          // ターゲット位置 (34.827494, 134.680157)
+          const targetLat = 34.827494;
+          const targetLon = 134.680157;
+
+          // 簡易距離計算 (三平方の定理的な概算)
+          // 緯度1度≒111km, 経度1度≒91km(日本付近)
+          const dy = (targetLat - myLat) * 111000;
+          const dx = (targetLon - myLon) * 91000;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+
+          // 画面更新
+          // 常に最新のGPS情報を1行目に書き換える
+          const statusText = `GPS: Active (${myLat}, ${myLon})\nDist: Approx ${Math.round(dist)}m`;
+          
+          // パネルの先頭を書き換え（手抜き実装ですが動作優先）
+          const lines = infoPanel.innerText.split('\n');
+          lines[0] = statusText;
+          infoPanel.innerText = lines.join('\n');
+      });
+
+      // 3. 【最重要】強制配置機能
+      function forceSpawn() {
+          const camera = document.querySelector('[gps-camera]');
+          const container = document.getElementById('move-container');
+          const btn = document.getElementById('spawn-btn');
+          
+          // カメラの現在位置と向きを取得
+          const camPos = camera.object3D.position;
+          
+          // カメラの向いている方向ベクトルを取得
+          const direction = new THREE.Vector3();
+          camera.object3D.getWorldDirection(direction);
+          
+          // 「目の前 5メートル」を計算
+          // カメラ位置 + (方向 * 5m)
+          // y成分（高さ）は無視して、自分の足元と同じ高さにする
+          const spawnX = camPos.x + (direction.x * 5);
+          const spawnZ = camPos.z + (direction.z * 5);
+          const spawnY = camPos.y - 1.5; // カメラの高さ(約1.5m)分下げる＝地面
+          
+          // コンテナをそこに移動
+          container.object3D.position.set(spawnX, spawnY, spawnZ);
+          container.setAttribute('visible', 'true');
+          
+          // アニメーション停止（重い場合のため）
+          // container.removeAttribute('animation');
+
+          log(`Spawned at: ${Math.round(spawnX)}, ${Math.round(spawnZ)}`);
+          btn.innerText = "📍 再配置する";
+          btn.style.background = "#007BFF";
       }
     </script>
   </body>
