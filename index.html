@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
     <script>
-      // スライドショーコンポーネント
+      // ▼▼▼ スライドショーコンポーネント（フェード切り替え） ▼▼▼
       AFRAME.registerComponent('auto-slideshow', {
         schema: {
           srcs: { type: 'array' }, 
@@ -73,13 +73,15 @@
       #loading-text { margin-top: 20px; color: #C5A059; font-size: 12px; letter-spacing: 4px; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-      /* ガイド */
+      /* ガイドメッセージ（認識時に消える） */
       #scan-guide {
         position: fixed; top: 20px; width: 100%; text-align: center;
-        color: #fff; font-size: 14px; letter-spacing: 1px;
-        background: rgba(0,0,0,0.5); padding: 10px 0;
+        color: #fff; font-size: 14px; letter-spacing: 2px;
+        background: rgba(0,0,0,0.6); padding: 12px 0;
         pointer-events: none; z-index: 8000;
+        transition: opacity 0.5s ease; /* ふわっと消えるアニメーション */
       }
+
       /* フッター */
       #footer-frame {
         position: fixed; bottom: 0; left: 0; width: 100%; height: 60px;
@@ -112,50 +114,62 @@
       device-orientation-permission-ui="enabled: false">
       
       <a-assets>
-        <img id="bldg1-1" src="./pers_1.png" />
-        <img id="bldg1-2" src="./pers_1_sub1.png" /> 
-        <img id="bldg1-3" src="./pers_1_sub2.png" /> 
+        <video id="vid-asset" src="./fl.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline muted></video>
 
-        <img id="bldg2-1" src="./pers_2.png" /> 
-        <img id="bldg2-2" src="./pers_2_sub1.png" />
-        <img id="bldg2-3" src="./pers_2_sub2.png" />
+        <a-asset-item id="model-asset" src="./model.glb"></a-asset-item>
+
+        <img id="slide1-1" src="./pers_1.png" />
+        <img id="slide1-2" src="./pers_1_sub1.png" /> 
+        <img id="slide1-3" src="./pers_1_sub2.png" /> 
+
+        <img id="slide2-1" src="./pers_2.png" /> 
+        <img id="slide2-2" src="./pers_2_sub1.png" />
+        <img id="slide2-3" src="./pers_2_sub2.png" />
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        
-        <a-entity scale="0.5 0.5 0.5" position="0 0 0">
-            
-            <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
-            
-            <a-image id="slideshow-1" 
-                     position="0 0 0" width="1" height="0.75"
-                     auto-slideshow="srcs: #bldg1-1, #bldg1-2, #bldg1-3; interval: 3000">
-            </a-image>
-            
-            <a-text value="BUILDING A" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
-
+        <a-entity scale="0.5 0.5 0.5">
+           <a-plane color="black" opacity="0.8" width="1.1" height="0.7" position="0 0 -0.01"></a-plane>
+           <a-video id="ar-video" src="#vid-asset" width="1" height="0.5625"></a-video>
+           <a-text value="MOVIE CLIP" align="center" position="0 -0.4 0" width="3" color="#fff" font="roboto"></a-text>
         </a-entity>
       </a-entity>
 
       <a-entity mindar-image-target="targetIndex: 1">
-        
-        <a-entity scale="0.5 0.5 0.5" position="0 0 0">
+        <a-entity scale="0.5 0.5 0.5">
+           <a-entity id="ar-model" gltf-model="#model-asset" 
+                     rotation="0 0 0" 
+                     animation="property: rotation; to: 0 360 0; dur: 20000; loop: true; easing: linear">
+           </a-entity>
+           <a-text value="3D MODEL VIEW" align="center" position="0 -0.8 0" width="3" color="#fff" font="roboto"></a-text>
+        </a-entity>
+      </a-entity>
 
-            <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+      <a-entity mindar-image-target="targetIndex: 2">
+        <a-entity scale="0.5 0.5 0.5">
+            <a-plane color="black" opacity="0.6" width="1.1" height="1.0" position="0 0 -0.01"></a-plane>
+            
+            <a-image id="slideshow-1" 
+                     position="0 0 0" width="1" height="0.75"
+                     auto-slideshow="srcs: #slide1-1, #slide1-2, #slide1-3; interval: 3000">
+            </a-image>
+            
+            <a-text value="BUILDING A" align="center" position="0 -0.6 0" width="3" color="#fff" font="roboto"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 3">
+        <a-entity scale="0.5 0.5 0.5">
+            <a-plane color="black" opacity="0.6" width="1.1" height="1.0" position="0 0 -0.01"></a-plane>
 
             <a-image id="slideshow-2" 
                      position="0 0 0" width="1" height="0.75"
-                     auto-slideshow="srcs: #bldg2-1, #bldg2-2, #bldg2-3; interval: 3000">
+                     auto-slideshow="srcs: #slide2-1, #slide2-2, #slide2-3; interval: 3000">
             </a-image>
             
-            <a-text value="BUILDING B" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
-
+            <a-text value="BUILDING B" align="center" position="0 -0.6 0" width="3" color="#fff" font="roboto"></a-text>
         </a-entity>
       </a-entity>
 
@@ -163,15 +177,18 @@
 
     <script>
       const loadingDiv = document.getElementById('loading');
+      const scanGuide = document.getElementById('scan-guide');
       const footerFrame = document.getElementById('footer-frame');
       const sceneEl = document.querySelector('a-scene');
       
+      // メディア要素
+      const videoEl = document.getElementById('vid-asset');
       const slide1 = document.getElementById('slideshow-1');
       const slide2 = document.getElementById('slideshow-2');
 
-      // 安全装置付きロード処理
+      // ロード完了処理
       sceneEl.addEventListener('arReady', () => { hideLoading(); });
-      sceneEl.addEventListener('arError', () => { hideLoading(); alert("カメラエラー: 再読み込みしてください"); });
+      sceneEl.addEventListener('arError', () => { hideLoading(); alert("カメラエラー"); });
       setTimeout(() => { hideLoading(); }, 10000);
 
       function hideLoading() {
@@ -181,19 +198,65 @@
         }
       }
 
-      // スライドショー制御
+      // 認識状態の管理（どれか1つでも認識していたらガイドを消す）
+      let activeTargets = 0;
+
+      function updateGuideVisibility() {
+          if (activeTargets > 0) {
+              scanGuide.style.opacity = 0; // 非表示
+          } else {
+              scanGuide.style.opacity = 1; // 表示
+          }
+      }
+
+      // 各ターゲットのイベントリスナー設定
       const targets = [
-          { el: document.querySelector('[mindar-image-target="targetIndex: 0"]'), content: slide1 },
-          { el: document.querySelector('[mindar-image-target="targetIndex: 1"]'), content: slide2 }
+          { 
+            el: document.querySelector('[mindar-image-target="targetIndex: 0"]'), 
+            type: 'video', 
+            content: videoEl 
+          },
+          { 
+            el: document.querySelector('[mindar-image-target="targetIndex: 1"]'), 
+            type: 'model', 
+            content: null 
+          },
+          { 
+            el: document.querySelector('[mindar-image-target="targetIndex: 2"]'), 
+            type: 'slide', 
+            content: slide1 
+          },
+          { 
+            el: document.querySelector('[mindar-image-target="targetIndex: 3"]'), 
+            type: 'slide', 
+            content: slide2 
+          }
       ];
 
       targets.forEach(t => {
           if(!t.el) return;
+
           t.el.addEventListener('targetFound', () => {
-              if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].play();
+              activeTargets++;
+              updateGuideVisibility();
+
+              // メディアごとの再生処理
+              if (t.type === 'video') t.content.play();
+              if (t.type === 'slide' && t.content.components['auto-slideshow']) {
+                  t.content.components['auto-slideshow'].play();
+              }
           });
+
           t.el.addEventListener('targetLost', () => {
-              if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].pause();
+              activeTargets--;
+              if(activeTargets < 0) activeTargets = 0;
+              updateGuideVisibility();
+
+              // メディアごとの停止処理
+              if (t.type === 'video') t.content.pause();
+              if (t.type === 'slide' && t.content.components['auto-slideshow']) {
+                  t.content.components['auto-slideshow'].pause();
+              }
           });
       });
 
