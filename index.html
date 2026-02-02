@@ -7,48 +7,74 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
     <script>
-      // スライドショーコンポーネント
-      AFRAME.registerComponent('auto-slideshow', {
+      // ▼▼▼ 同期型スライドショーシステム ▼▼▼
+      // 複数のターゲットで「現在の枚数」を共有する仕組み
+      
+      const slideshowState = {
+        groupA: { index: 0, timer: null, srcs: ['#bldg1-1', '#bldg1-2', '#bldg1-3'] },
+        groupB: { index: 0, timer: null, srcs: ['#bldg2-1', '#bldg2-2', '#bldg2-3'] }
+      };
+
+      AFRAME.registerComponent('sync-slideshow', {
         schema: {
-          srcs: { type: 'array' }, 
-          interval: { type: 'number', default: 3000 }
+          group: { type: 'string', default: 'groupA' } // 'groupA' or 'groupB'
         },
         init: function () {
-          this.el.setAttribute('src', this.data.srcs[0]);
-          this.el.setAttribute('material', 'transparent: true; opacity: 1');
-          this.index = 0;
-          this.timer = null;
+          this.groupName = this.data.group;
+          this.state = slideshowState[this.groupName];
+          
+          // 初期画像を表示
+          this.updateImage(this.state.index, false);
+          
+          // グループごとにタイマーが動いていなければ起動（最初の1個だけが起動する）
+          if (!this.state.timer) {
+            this.state.timer = setInterval(() => {
+              this.nextGlobalSlide();
+            }, 4000); // 4秒ごとに切り替え
+          }
+          
+          // カスタムイベントリスナー：他のターゲットが切り替わった時に自分も更新する
+          this.el.sceneEl.addEventListener(`slide-change-${this.groupName}`, (evt) => {
+            this.updateImage(evt.detail.index, true);
+          });
         },
-        play: function() {
-          if (this.timer) return;
-          this.timer = setInterval(() => { this.nextSlide(); }, this.data.interval);
+        
+        nextGlobalSlide: function() {
+          // インデックスを進める
+          this.state.index = (this.state.index + 1) % this.state.srcs.length;
+          
+          // 全体に通知（自分自身も含めて更新）
+          this.el.sceneEl.emit(`slide-change-${this.groupName}`, { index: this.state.index });
         },
-        pause: function() {
-          if (this.timer) clearInterval(this.timer);
-          this.timer = null;
-          this.el.setAttribute('material', 'opacity', 1);
-        },
-        nextSlide: function () {
+
+        updateImage: function(newIndex, animate) {
           const el = this.el;
-          // フェードアウト
-          el.setAttribute('animation', { property: 'material.opacity', from: 1, to: 0, dur: 500, easing: 'linear' });
-
-          setTimeout(() => {
-            // 画像切り替え
-            this.index = (this.index + 1) % this.data.srcs.length;
-            el.setAttribute('src', this.data.srcs[this.index]);
+          const srcId = this.state.srcs[newIndex];
+          
+          if (animate) {
+            // フェードアウト
+            el.setAttribute('animation', { property: 'material.opacity', from: 1, to: 0, dur: 500, easing: 'linear' });
             
-            // アスペクト比調整
-            const img = document.querySelector(this.data.srcs[this.index]);
-            if(img && img.naturalWidth) {
-                const ratio = img.naturalHeight / img.naturalWidth;
-                el.setAttribute('height', ratio);
-            }
+            setTimeout(() => {
+              el.setAttribute('src', srcId);
+              this.adjustRatio(srcId);
+              // フェードイン
+              el.removeAttribute('animation');
+              el.setAttribute('animation', { property: 'material.opacity', from: 0, to: 1, dur: 500, easing: 'linear' });
+            }, 500);
+          } else {
+            // アニメなし（初期化時）
+            el.setAttribute('src', srcId);
+            this.adjustRatio(srcId);
+          }
+        },
 
-            // フェードイン
-            el.removeAttribute('animation');
-            el.setAttribute('animation', { property: 'material.opacity', from: 0, to: 1, dur: 500, easing: 'linear' });
-          }, 500);
+        adjustRatio: function(srcId) {
+          const img = document.querySelector(srcId);
+          if(img && img.naturalWidth) {
+              const ratio = img.naturalHeight / img.naturalWidth;
+              this.el.setAttribute('height', ratio);
+          }
         }
       });
     </script>
@@ -57,55 +83,27 @@
       body { margin: 0; overflow: hidden; font-family: "Yu Mincho", serif; background: #000; }
 
       /* ローディング */
-      #loading {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: #0a0a0a; z-index: 99999;
-        display: flex; flex-direction: column; justify-content: center; align-items: center;
-        transition: opacity 0.5s ease-out;
-      }
-      .loader {
-        width: 50px; height: 50px;
-        border: 1px solid rgba(197, 160, 89, 0.3);
-        border-top: 1px solid #C5A059;
-        border-radius: 50%;
-        animation: spin 1.5s linear infinite;
-      }
+      #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0a0a0a; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease-out; }
+      .loader { width: 50px; height: 50px; border: 1px solid rgba(197, 160, 89, 0.3); border-top: 1px solid #C5A059; border-radius: 50%; animation: spin 1.5s linear infinite; }
       #loading-text { margin-top: 20px; color: #C5A059; font-size: 12px; letter-spacing: 4px; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
       /* ガイド */
-      #scan-guide {
-        position: fixed; top: 20px; width: 100%; text-align: center;
-        color: #fff; font-size: 14px; letter-spacing: 1px;
-        background: rgba(0,0,0,0.5); padding: 10px 0;
-        pointer-events: none; z-index: 8000;
-      }
+      #scan-guide { position: fixed; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 14px; letter-spacing: 1px; background: rgba(0,0,0,0.5); padding: 10px 0; pointer-events: none; z-index: 8000; }
+      
       /* フッター */
-      #footer-frame {
-        position: fixed; bottom: 0; left: 0; width: 100%; height: 60px;
-        background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
-        border-top: 1px solid rgba(197, 160, 89, 0.3);
-        display: flex; justify-content: center; align-items: center;
-        z-index: 9999; cursor: pointer;
-      }
+      #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); border-top: 1px solid rgba(197, 160, 89, 0.3); display: flex; justify-content: center; align-items: center; z-index: 9999; cursor: pointer; }
       .footer-text { color: #fff; font-size: 12px; letter-spacing: 1px; }
     </style>
   </head>
   <body>
 
-    <div id="loading">
-      <div class="loader"></div>
-      <div id="loading-text">LOADING...</div>
-    </div>
-
+    <div id="loading"><div class="loader"></div><div id="loading-text">LOADING...</div></div>
     <div id="scan-guide">建物を映してください</div>
-
-    <div id="footer-frame">
-      <div class="footer-text">Tap to Open Website</div>
-    </div>
+    <div id="footer-frame"><div class="footer-text">Tap to Open Website</div></div>
 
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets3.mind; uiError:yes; uiLoading:no; filterMinCF:0.0001; filterBeta: 0.001;" 
+      mindar-image="imageTargetSrc: ./targets4.mind; uiError:yes; uiLoading:no; filterMinCF:0.001; filterBeta: 0.01; warmupTolerance: 5;" 
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights" 
       vr-mode-ui="enabled: false" 
@@ -115,7 +113,6 @@
         <img id="bldg1-1" src="./pers_1.png" />
         <img id="bldg1-2" src="./pers_1_sub1.png" /> 
         <img id="bldg1-3" src="./pers_1_sub2.png" /> 
-
         <img id="bldg2-1" src="./pers_2.png" /> 
         <img id="bldg2-2" src="./pers_2_sub1.png" />
         <img id="bldg2-3" src="./pers_2_sub2.png" />
@@ -124,38 +121,63 @@
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        
-        <a-entity scale="0.5 0.5 0.5" position="0 0 0">
-            
-            <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
-            
-            <a-image id="slideshow-1" 
-                     position="0 0 0" width="1" height="0.75"
-                     auto-slideshow="srcs: #bldg1-1, #bldg1-2, #bldg1-3; interval: 3000">
-            </a-image>
-            
-            <a-text value="BUILDING A" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
-
+        <a-entity scale="0.5 0.5 0.5">
+          <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+          <a-image sync-slideshow="group: groupA" width="1" height="0.75"></a-image>
+          <a-text value="BUILDING A" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
         </a-entity>
       </a-entity>
 
       <a-entity mindar-image-target="targetIndex: 1">
-        
-        <a-entity scale="0.5 0.5 0.5" position="0 0 0">
+        <a-entity scale="0.5 0.5 0.5">
+          <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+          <a-image sync-slideshow="group: groupA" width="1" height="0.75"></a-image>
+          <a-text value="BUILDING A" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
+        </a-entity>
+      </a-entity>
 
-            <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
-            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+      <a-entity mindar-image-target="targetIndex: 2">
+        <a-entity scale="0.5 0.5 0.5">
+          <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+          <a-image sync-slideshow="group: groupA" width="1" height="0.75"></a-image>
+          <a-text value="BUILDING A" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
+        </a-entity>
+      </a-entity>
 
-            <a-image id="slideshow-2" 
-                     position="0 0 0" width="1" height="0.75"
-                     auto-slideshow="srcs: #bldg2-1, #bldg2-2, #bldg2-3; interval: 3000">
-            </a-image>
-            
-            <a-text value="BUILDING B" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
 
+      <a-entity mindar-image-target="targetIndex: 3">
+        <a-entity scale="0.5 0.5 0.5">
+          <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+          <a-image sync-slideshow="group: groupB" width="1" height="0.75"></a-image>
+          <a-text value="BUILDING B" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 4">
+        <a-entity scale="0.5 0.5 0.5">
+          <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+          <a-image sync-slideshow="group: groupB" width="1" height="0.75"></a-image>
+          <a-text value="BUILDING B" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 5">
+        <a-entity scale="0.5 0.5 0.5">
+          <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+          <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+          <a-image sync-slideshow="group: groupB" width="1" height="0.75"></a-image>
+          <a-text value="BUILDING B" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
         </a-entity>
       </a-entity>
 
@@ -165,13 +187,10 @@
       const loadingDiv = document.getElementById('loading');
       const footerFrame = document.getElementById('footer-frame');
       const sceneEl = document.querySelector('a-scene');
-      
-      const slide1 = document.getElementById('slideshow-1');
-      const slide2 = document.getElementById('slideshow-2');
 
-      // 安全装置付きロード処理
+      // 安全ロード
       sceneEl.addEventListener('arReady', () => { hideLoading(); });
-      sceneEl.addEventListener('arError', () => { hideLoading(); alert("カメラエラー: 再読み込みしてください"); });
+      sceneEl.addEventListener('arError', () => { hideLoading(); alert("カメラエラー"); });
       setTimeout(() => { hideLoading(); }, 10000);
 
       function hideLoading() {
@@ -180,22 +199,6 @@
             setTimeout(() => { loadingDiv.style.display = 'none'; }, 500);
         }
       }
-
-      // スライドショー制御
-      const targets = [
-          { el: document.querySelector('[mindar-image-target="targetIndex: 0"]'), content: slide1 },
-          { el: document.querySelector('[mindar-image-target="targetIndex: 1"]'), content: slide2 }
-      ];
-
-      targets.forEach(t => {
-          if(!t.el) return;
-          t.el.addEventListener('targetFound', () => {
-              if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].play();
-          });
-          t.el.addEventListener('targetLost', () => {
-              if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].pause();
-          });
-      });
 
       footerFrame.addEventListener('click', () => {
         window.open('https://lykke-hygge-2.myshopify.com/', '_blank'); 
