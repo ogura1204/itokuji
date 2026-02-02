@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR（サイズスキャン版）</title>
+    <title>町家の日 AR（位置補正版）</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
@@ -18,7 +18,7 @@
   <body>
 
     <div id="loading"><div class="loader"></div></div>
-    <div id="footer-frame"><div class="f-text">Scanning Size...</div></div>
+    <div id="footer-frame"><div class="f-text">Location Corrected</div></div>
 
     <a-scene 
       mindar-image="imageTargetSrc: ./targets-2.mind; uiError:yes; uiLoading:no;" 
@@ -44,20 +44,27 @@
 
       <a-entity id="target-pop2" mindar-image-target="targetIndex: 1">
         
-        <a-box color="blue" opacity="0.5" position="0 0 0" scale="0.5 0.5 0.5"></a-box>
+        <a-box color="blue" opacity="0.3" position="0 0 0" scale="0.5 0.5 0.5"></a-box>
 
         <a-entity gltf-model="#model-glb" 
-                  position="0 0 0" 
+                  position="29 -0.5 2" 
+                  scale="1 1 1"
                   rotation="0 0 0"
-                  animation="property: scale; from: 0.1 0.1 0.1; to: 50 50 50; dur: 5000; dir: alternate; loop: true; easing: linear">
+                  animation="property: rotation; to: 0 360 0; dur: 20000; loop: true; easing: linear">
         </a-entity>
 
       </a-entity>
 
       <a-entity id="target-outside" mindar-image-target="targetIndex: 2"></a-entity>
-
       <a-entity id="target-card" mindar-image-target="targetIndex: 3">
+        <a-entity id="magic-circle-container" scale="0 0 0"
+                  animation__appear="property: scale; to: 0.6 0.6 0.6; dur: 2000; easing: easeOutCubic; startEvents: appear"
+                  animation__disappear="property: scale; to: 0 0 0; dur: 500; easing: easeInQuad; startEvents: disappear">
+            <a-image src="#img-magic-circle" width="2" height="2" opacity="0.8"
+                     animation="property: rotation; to: 0 0 -360; dur: 60000; loop: true; easing: linear"></a-image>
+            <a-entity id="circular-text-ring" animation="property: rotation; to: 0 0 360; dur: 40000; loop: true; easing: linear"></a-entity>
         </a-entity>
+      </a-entity>
 
     </a-scene>
 
@@ -66,8 +73,43 @@
       const sceneEl = document.querySelector('a-scene');
       sceneEl.addEventListener('arReady', () => {
         loadingDiv.style.display = 'none';
+        createCircularText();
       });
-      // その他のスクリプトは省略なしで動作します
+
+      // 円形テキスト生成関数（維持）
+      const textRing = document.getElementById('circular-text-ring');
+      function createCircularText() {
+        if(!textRing) return;
+        const text = "We look forward to working with you. ";
+        const radius = 1.35;
+        const totalChars = text.length;
+        const angleStep = 360 / totalChars;
+        for (let i = 0; i < totalChars; i++) {
+          const char = text[i];
+          const angle = i * angleStep;
+          const pivot = document.createElement('a-entity');
+          pivot.setAttribute('rotation', `0 0 ${-angle}`);
+          const textEl = document.createElement('a-text');
+          textEl.setAttribute('value', char);
+          textEl.setAttribute('align', 'center');
+          textEl.setAttribute('color', 'white');
+          textEl.setAttribute('width', '5');
+          textEl.setAttribute('position', `0 ${radius} 0`);
+          pivot.appendChild(textEl);
+          textRing.appendChild(pivot);
+        }
+      }
+      
+      // その他のイベントリスナーも維持
+      const targetCard = document.getElementById('target-card');
+      const magicCircle = document.getElementById('magic-circle-container');
+      if(targetCard && magicCircle){
+          targetCard.addEventListener('targetFound', () => { magicCircle.emit('appear'); });
+          targetCard.addEventListener('targetLost', () => { magicCircle.emit('disappear'); });
+      }
+      
+      const footerFrame = document.getElementById('footer-frame');
+      if(footerFrame) footerFrame.addEventListener('click', () => { window.open('https://lykke-hygge-2.myshopify.com/', '_blank'); });
     </script>
   </body>
 </html>
