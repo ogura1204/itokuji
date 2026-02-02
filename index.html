@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR Experience</title>
+    <title>町家の日 GPS AR</title>
+    
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     
     <script>
-      // 1. ジェスチャー検出
+      // 1. ジェスチャー検出 (位置情報版でも操作可能にするため維持)
       AFRAME.registerComponent("gesture-detector", {
         schema: { element: { default: "" } },
         init: function() {
@@ -66,7 +69,7 @@
         init: function() {
           this.handleScale = this.handleScale.bind(this);
           this.handleRotation = this.handleRotation.bind(this);
-          this.isVisible = false;
+          this.isVisible = true; // GPS版は最初から表示扱いにする
           this.initialScale = this.el.object3D.scale.clone();
           this.scaleFactor = 1;
           this.el.sceneEl.addEventListener("gesture-detector", (evt) => {});
@@ -92,39 +95,46 @@
           }
         }
       });
+      
+      // モデルを常にユーザーの方へ向ける処理（ビルボード）
+      AFRAME.registerComponent('look-at', {
+        schema: { type: 'selector' },
+        init: function () {},
+        tick: function () {
+          this.el.object3D.lookAt(this.data.object3D.position);
+        }
+      });
     </script>
 
     <style>
       body { margin: 0; overflow: hidden; font-family: "Yu Mincho", serif; }
-      #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 99999; display: flex; justify-content: center; align-items: center; pointer-events: none; }
-      .loader { border: 2px solid rgba(255,255,255,0.1); border-left-color: #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; pointer-events: none; }
       .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
+      
+      /* GPS取得中の案内 */
+      #gps-status {
+          position: fixed; top: 10px; left: 0; width: 100%; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 5px; z-index: 9999;
+      }
     </style>
   </head>
+  
   <body>
-
-    <div id="loading"><div class="loader"></div></div>
+    <div id="gps-status">GPS Signal Searching...</div>
     <div id="footer-frame"><div class="f-text" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Tap to Open Shop</div></div>
 
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets-2.mind; uiError:yes; uiLoading:no;" 
-      color-space="sRGB" 
-      renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false"
+    <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+      renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;"
       gesture-detector>
-      
+
       <a-assets>
-        <img id="img-pers-1" src="./pers_1.png" />
         <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
-        <img id="img-magic-circle" src="./magic_circle.png" />
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false" 
-                cursor="fuse: false; rayOrigin: mouse;" 
-                raycaster="objects: .clickable">
+      <a-camera gps-camera rotation-reader look-controls-enabled='false' arjs-look-controls='smoothingFactor: 0.1' 
+                cursor="fuse: false; rayOrigin: mouse;" raycaster="objects: .clickable">
       </a-camera>
 
       <a-light type="hemisphere" skyColor="#ffffff" groundColor="#444444" intensity="1.2"></a-light>
@@ -132,108 +142,48 @@
       <a-light type="directional" color="#ffeedd" intensity="2.0" position="-2 3 -5"></a-light>
       <a-light type="directional" color="#dbeeff" intensity="0.8" position="-4 2 2"></a-light>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-image id="ar-image-1" src="#img-pers-1" position="0 0 0" width="1"></a-image>
-      </a-entity>
+      <a-entity gps-entity-place="latitude: 34.82708530462843; longitude: 134.67996705769912;">
 
-      <a-entity id="target-pop2" mindar-image-target="targetIndex: 1">
-        
-        <a-entity id="msg-panel-container" position="0 1.0 0" scale="0 0 0"
-                  animation__appear="property: scale; to: 1 1 1; dur: 1000; easing: easeOutElastic; startEvents: showMsg"
-                  animation__disappear="property: scale; to: 0 0 0; dur: 300; easing: easeInQuad; startEvents: hideMsg">
-            
-            <a-entity animation="property: position; to: 0 0.1 0; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
-                
-                <a-plane color="black" opacity="0.7" width="1.8" height="0.6" position="0 0 0"></a-plane>
-                
-                <a-plane color="#ffffff" width="1.6" height="0.02" position="0 -0.2 0.01"></a-plane>
+        <a-entity id="ar-content" position="0 0 0" scale="2 2 2" look-at="[gps-camera]">
 
-                <a-text value="2026.8" align="center" color="#ffffff" width="5" position="0 0.12 0.01" 
-                        font="roboto" shader="msdf"></a-text>
-                
-                <a-text value="GRAND OPEN" align="center" color="#FFD700" width="4" position="0 -0.05 0.01" 
-                        font="roboto" shader="msdf" letter-spacing="2"></a-text>
-
+            <a-entity id="msg-panel-container" position="0 1.5 0">
+                <a-entity animation="property: position; to: 0 0.1 0; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
+                    <a-plane color="black" opacity="0.7" width="1.8" height="0.6" position="0 0 0"></a-plane>
+                    <a-plane color="#ffffff" width="1.6" height="0.02" position="0 -0.2 0.01"></a-plane>
+                    <a-text value="2026.8" align="center" color="#ffffff" width="5" position="0 0.12 0.01" font="roboto" shader="msdf"></a-text>
+                    <a-text value="GRAND OPEN" align="center" color="#FFD700" width="4" position="0 -0.05 0.01" font="roboto" shader="msdf" letter-spacing="2"></a-text>
+                </a-entity>
             </a-entity>
-        </a-entity>
-        <a-entity id="my-model"
-                  gltf-model="#model-glb" 
-                  position="0 -1 0" 
-                  rotation="0 0 0" 
-                  scale="0.3 0.3 0.3"
-                  class="clickable"
-                  gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5">
-        </a-entity>
 
-      </a-entity>
+            <a-entity id="my-model"
+                      gltf-model="#model-glb" 
+                      position="0 0 0" 
+                      rotation="0 0 0" 
+                      scale="0.5 0.5 0.5"
+                      class="clickable"
+                      gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5">
+            </a-entity>
 
-      <a-entity id="target-outside" mindar-image-target="targetIndex: 2"></a-entity>
-
-      <a-entity id="target-card" mindar-image-target="targetIndex: 3">
-        <a-entity id="magic-circle-container" scale="0 0 0"
-                  animation__appear="property: scale; to: 0.6 0.6 0.6; dur: 2000; easing: easeOutCubic; startEvents: appear"
-                  animation__disappear="property: scale; to: 0 0 0; dur: 500; easing: easeInQuad; startEvents: disappear">
-            <a-image src="#img-magic-circle" width="2" height="2" opacity="0.8"
-                     animation="property: rotation; to: 0 0 -360; dur: 60000; loop: true; easing: linear"></a-image>
-            <a-entity id="circular-text-ring" animation="property: rotation; to: 0 0 360; dur: 40000; loop: true; easing: linear"></a-entity>
         </a-entity>
       </a-entity>
 
     </a-scene>
 
     <script>
-      const loadingDiv = document.getElementById('loading');
-      const sceneEl = document.querySelector('a-scene');
-      
-      const targetEntity = document.getElementById('target-pop2');
-      const modelEntity = document.getElementById('my-model');
-      const msgPanel = document.getElementById('msg-panel-container');
-
-      if (targetEntity) {
-        targetEntity.addEventListener('targetFound', () => {
-          if(modelEntity) modelEntity.components['gesture-handler'].isVisible = true;
-          if(msgPanel) msgPanel.emit('showMsg');
-        });
-
-        targetEntity.addEventListener('targetLost', () => {
-          if(modelEntity) modelEntity.components['gesture-handler'].isVisible = false;
-          if(msgPanel) msgPanel.emit('hideMsg');
-        });
-      }
-
-      sceneEl.addEventListener('arReady', () => {
-        loadingDiv.style.display = 'none';
-        createCircularText();
+      // GPS認識のステータス表示制御
+      window.addEventListener('gps-camera-update-position', function(e) {
+        document.getElementById('gps-status').style.display = 'none';
       });
-
-      const textRing = document.getElementById('circular-text-ring');
-      function createCircularText() {
-        if(!textRing) return;
-        const text = "We look forward to working with you. ";
-        const radius = 1.35;
-        const totalChars = text.length;
-        const angleStep = 360 / totalChars;
-        for (let i = 0; i < totalChars; i++) {
-          const char = text[i];
-          const angle = i * angleStep;
-          const pivot = document.createElement('a-entity');
-          pivot.setAttribute('rotation', `0 0 ${-angle}`);
-          const textEl = document.createElement('a-text');
-          textEl.setAttribute('value', char);
-          textEl.setAttribute('align', 'center');
-          textEl.setAttribute('color', 'white');
-          textEl.setAttribute('width', '5');
-          textEl.setAttribute('position', `0 ${radius} 0`);
-          pivot.appendChild(textEl);
-          textRing.appendChild(pivot);
-        }
-      }
       
-      const targetCard = document.getElementById('target-card');
-      const magicCircle = document.getElementById('magic-circle-container');
-      if(targetCard && magicCircle){
-          targetCard.addEventListener('targetFound', () => { magicCircle.emit('appear'); });
-          targetCard.addEventListener('targetLost', () => { magicCircle.emit('disappear'); });
+      // モデルの操作制御（常に表示扱い）
+      const modelEntity = document.getElementById('my-model');
+      if(modelEntity) {
+        // ロケーションベースARでは「見つけた」イベントがないため、初期ロード後に操作を有効化
+        setTimeout(() => {
+             if(modelEntity.components['gesture-handler']) {
+                 modelEntity.components['gesture-handler'].isVisible = true;
+             }
+        }, 1000);
       }
     </script>
   </body>
