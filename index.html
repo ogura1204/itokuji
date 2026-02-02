@@ -38,7 +38,10 @@
         <img id="img-magic-circle" src="./magic_circle.png" />
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false" 
+                cursor="fuse: false; rayOrigin: mouse;" 
+                raycaster="objects: .clickable">
+      </a-camera>
 
       <a-light type="ambient" color="#BBB" intensity="1"></a-light>
       <a-light type="directional" color="#FFF" intensity="1.5" position="-0.5 1 1"></a-light>
@@ -56,7 +59,7 @@
                   rotation="0 0 0" 
                   scale="0.7 0.7 0.7"
                   class="clickable"
-                  gesture-handler="minFinger: 1; maxFinger: 2;">
+                  gesture-handler="minScale: 0.25; maxScale: 10">
         </a-entity>
 
       </a-entity>
