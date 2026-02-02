@@ -2,27 +2,119 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR（操作・調整版）</title>
+    <title>町家の日 AR（操作修正完全版）</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
-    <script src="https://raw.githack.com/fcor/arjs-gestures/master/dist/gestures.js"></script>
-    
+    <script>
+      // 1. ジェスチャー検出コンポーネント
+      AFRAME.registerComponent("gesture-detector", {
+        schema: { element: { default: "" } },
+        init: function() {
+          this.targetElement = this.data.element && document.querySelector(this.data.element);
+          if (!this.targetElement) { this.targetElement = this.el; }
+          this.internalState = { previousState: null };
+          this.emitGestureEvent = this.emitGestureEvent.bind(this);
+          this.targetElement.addEventListener("touchstart", this.emitGestureEvent);
+          this.targetElement.addEventListener("touchend", this.emitGestureEvent);
+          this.targetElement.addEventListener("touchmove", this.emitGestureEvent);
+        },
+        remove: function() {
+          this.targetElement.removeEventListener("touchstart", this.emitGestureEvent);
+          this.targetElement.removeEventListener("touchend", this.emitGestureEvent);
+          this.targetElement.removeEventListener("touchmove", this.emitGestureEvent);
+        },
+        emitGestureEvent: function(event) {
+          const currentState = this.getTouchState(event);
+          const previousState = this.internalState.previousState;
+          const gestureContinues = previousState && currentState && currentState.touchCount == previousState.touchCount;
+          const gestureEnded = previousState && !gestureContinues;
+          const gestureStarted = currentState && !gestureContinues;
+
+          if (gestureEnded) { this.el.emit("gesture-end"); }
+          if (gestureStarted) { this.el.emit("gesture-start"); }
+          if (gestureContinues) {
+            const eventDetail = {
+              positionChange: { x: currentState.position.x - previousState.position.x, y: currentState.position.y - previousState.position.y },
+              spreadChange: currentState.spread - previousState.spread,
+              startPosition: previousState.position,
+              position: currentState.position,
+              spread: currentState.spread,
+            };
+            if (currentState.touchCount == 1) { this.el.emit("onefingermove", eventDetail); }
+            if (currentState.touchCount == 2) { this.el.emit("twofingermove", eventDetail); }
+          }
+          this.internalState.previousState = currentState;
+        },
+        getTouchState: function(event) {
+          if (event.touches.length === 0) { return null; }
+          if (event.touches.length === 1) {
+            return { touchCount: 1, position: { x: event.touches[0].pageX, y: event.touches[0].pageY }, spread: 0 };
+          }
+          const spread = Math.hypot(event.touches[0].pageX - event.touches[1].pageX, event.touches[0].pageY - event.touches[1].pageY);
+          return { touchCount: 2, position: { x: (event.touches[0].pageX + event.touches[1].pageX) / 2, y: (event.touches[0].pageY + event.touches[1].pageY) / 2 }, spread: spread };
+        }
+      });
+
+      // 2. ジェスチャー操作コンポーネント（回転・拡大縮小）
+      AFRAME.registerComponent("gesture-handler", {
+        schema: {
+          enabled: { default: true },
+          rotationFactor: { default: 5 },
+          minScale: { default: 0.1 },
+          maxScale: { default: 8 },
+        },
+        init: function() {
+          this.handleScale = this.handleScale.bind(this);
+          this.handleRotation = this.handleRotation.bind(this);
+          this.isVisible = false;
+          this.initialScale = this.el.object3D.scale.clone();
+          this.scaleFactor = 1;
+          
+          this.el.sceneEl.addEventListener("gesture-detector", (evt) => {
+             // イベントリスナーの登録タイミングを保証
+          });
+          this.el.sceneEl.addEventListener("twofingermove", this.handleScale);
+          this.el.sceneEl.addEventListener("onefingermove", this.handleRotation);
+        },
+        remove: function() {
+          this.el.sceneEl.removeEventListener("twofingermove", this.handleScale);
+          this.el.sceneEl.removeEventListener("onefingermove", this.handleRotation);
+        },
+        handleRotation: function(event) {
+          if (this.isVisible) {
+            this.el.object3D.rotation.y += event.detail.positionChange.x * this.data.rotationFactor * 0.001;
+            // 縦回転もしたい場合は以下を有効化
+            // this.el.object3D.rotation.x += event.detail.positionChange.y * this.data.rotationFactor * 0.001;
+          }
+        },
+        handleScale: function(event) {
+          if (this.isVisible) {
+            this.scaleFactor *= 1 + event.detail.spreadChange / event.detail.spread;
+            this.scaleFactor = Math.min(Math.max(this.scaleFactor, this.data.minScale), this.data.maxScale);
+            this.el.object3D.scale.x = this.scaleFactor * this.initialScale.x;
+            this.el.object3D.scale.y = this.scaleFactor * this.initialScale.y;
+            this.el.object3D.scale.z = this.scaleFactor * this.initialScale.z;
+          }
+        }
+      });
+    </script>
+
     <style>
       body { margin: 0; overflow: hidden; font-family: "Yu Mincho", serif; }
-      /* ローディング画面 */
-      #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 99999; display: flex; justify-content: center; align-items: center; }
+      #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 99999; display: flex; justify-content: center; align-items: center; pointer-events: none; }
       .loader { border: 2px solid rgba(255,255,255,0.1); border-left-color: #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      /* フッター */
-      #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-      .f-text { color: white; font-size: 12px; }
+      
+      /* フッター設定：全体はタッチ透過、文字だけタッチ可能にする */
+      #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; pointer-events: none; }
+      .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
     </style>
   </head>
   <body>
 
     <div id="loading"><div class="loader"></div></div>
-    <div id="footer-frame"><div class="f-text">Tap to Open Shop</div></div>
+    <div id="footer-frame"><div class="f-text" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Tap to Open Shop</div></div>
 
     <a-scene 
       mindar-image="imageTargetSrc: ./targets-2.mind; uiError:yes; uiLoading:no;" 
@@ -54,12 +146,13 @@
         
         <a-box color="blue" opacity="0.3" position="0 0 0" scale="0.1 0.1 0.1"></a-box>
 
-        <a-entity gltf-model="#model-glb" 
-                  position="0 -5 0" 
+        <a-entity id="my-model"
+                  gltf-model="#model-glb" 
+                  position="0 -2 0" 
                   rotation="15 0 0" 
                   scale="0.4 0.4 0.4"
                   class="clickable"
-                  gesture-handler="minScale: 0.25; maxScale: 10">
+                  gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5">
         </a-entity>
 
       </a-entity>
@@ -79,15 +172,28 @@
     </a-scene>
 
     <script>
-      // 初期ロード処理
       const loadingDiv = document.getElementById('loading');
       const sceneEl = document.querySelector('a-scene');
+      
+      // モデルが「見えているとき」だけ操作できるようにする制御
+      // これがないと、モデルが表示されていなくても画面を触ると見えないところで回転してしまうのを防ぎます
+      const targetEntity = document.getElementById('target-pop2');
+      const modelEntity = document.getElementById('my-model');
+
+      if (targetEntity && modelEntity) {
+        targetEntity.addEventListener('targetFound', () => {
+          modelEntity.components['gesture-handler'].isVisible = true;
+        });
+        targetEntity.addEventListener('targetLost', () => {
+          modelEntity.components['gesture-handler'].isVisible = false;
+        });
+      }
+
       sceneEl.addEventListener('arReady', () => {
         loadingDiv.style.display = 'none';
         createCircularText();
       });
 
-      // 円形テキスト生成
       const textRing = document.getElementById('circular-text-ring');
       function createCircularText() {
         if(!textRing) return;
@@ -111,17 +217,12 @@
         }
       }
       
-      // ターゲット認識イベント
       const targetCard = document.getElementById('target-card');
       const magicCircle = document.getElementById('magic-circle-container');
       if(targetCard && magicCircle){
           targetCard.addEventListener('targetFound', () => { magicCircle.emit('appear'); });
           targetCard.addEventListener('targetLost', () => { magicCircle.emit('disappear'); });
       }
-      
-      // フッタークリックイベント
-      const footerFrame = document.getElementById('footer-frame');
-      if(footerFrame) footerFrame.addEventListener('click', () => { window.open('https://lykke-hygge-2.myshopify.com/', '_blank'); });
     </script>
   </body>
 </html>
