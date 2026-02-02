@@ -10,7 +10,7 @@
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     
     <script>
-      // 1. ジェスチャー検出 (位置情報版でも操作可能にするため維持)
+      // 1. ジェスチャー検出
       AFRAME.registerComponent("gesture-detector", {
         schema: { element: { default: "" } },
         init: function() {
@@ -64,12 +64,12 @@
           enabled: { default: true },
           rotationFactor: { default: 5 },
           minScale: { default: 0.1 },
-          maxScale: { default: 8 },
+          maxScale: { default: 20 },
         },
         init: function() {
           this.handleScale = this.handleScale.bind(this);
           this.handleRotation = this.handleRotation.bind(this);
-          this.isVisible = true; // GPS版は最初から表示扱いにする
+          this.isVisible = true; 
           this.initialScale = this.el.object3D.scale.clone();
           this.scaleFactor = 1;
           this.el.sceneEl.addEventListener("gesture-detector", (evt) => {});
@@ -96,7 +96,7 @@
         }
       });
       
-      // モデルを常にユーザーの方へ向ける処理（ビルボード）
+      // ビルボード（常に自分の方を向く）
       AFRAME.registerComponent('look-at', {
         schema: { type: 'selector' },
         init: function () {},
@@ -111,15 +111,16 @@
       #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; pointer-events: none; }
       .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
       
-      /* GPS取得中の案内 */
+      /* GPS案内表示 */
       #gps-status {
           position: fixed; top: 10px; left: 0; width: 100%; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 5px; z-index: 9999;
+          transition: opacity 0.5s ease;
       }
     </style>
   </head>
   
   <body>
-    <div id="gps-status">GPS Signal Searching...</div>
+    <div id="gps-status">GPS Searching...</div>
     <div id="footer-frame"><div class="f-text" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Tap to Open Shop</div></div>
 
     <a-scene
@@ -133,7 +134,7 @@
         <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera gps-camera rotation-reader look-controls-enabled='false' arjs-look-controls='smoothingFactor: 0.1' 
+      <a-camera gps-camera="gpsMinDistance: 5;" rotation-reader look-controls-enabled='false' arjs-look-controls='smoothingFactor: 0.1' 
                 cursor="fuse: false; rayOrigin: mouse;" raycaster="objects: .clickable">
       </a-camera>
 
@@ -142,12 +143,12 @@
       <a-light type="directional" color="#ffeedd" intensity="2.0" position="-2 3 -5"></a-light>
       <a-light type="directional" color="#dbeeff" intensity="0.8" position="-4 2 2"></a-light>
 
-      <a-entity gps-entity-place="latitude: 34.82708530462843; longitude: 134.67996705769912;">
+      <a-entity gps-entity-place="latitude: 34.82749460261197; longitude: 134.68015716788724;">
 
-        <a-entity id="ar-content" position="0 0 0" scale="2 2 2" look-at="[gps-camera]">
+        <a-entity id="ar-content" position="0 0 0" look-at="[gps-camera]">
 
-            <a-entity id="msg-panel-container" position="0 1.5 0">
-                <a-entity animation="property: position; to: 0 0.1 0; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
+            <a-entity id="msg-panel-container" position="0 9.5 0" scale="2 2 2">
+                <a-entity animation="property: position; to: 0 0.2 0; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
                     <a-plane color="black" opacity="0.7" width="1.8" height="0.6" position="0 0 0"></a-plane>
                     <a-plane color="#ffffff" width="1.6" height="0.02" position="0 -0.2 0.01"></a-plane>
                     <a-text value="2026.8" align="center" color="#ffffff" width="5" position="0 0.12 0.01" font="roboto" shader="msdf"></a-text>
@@ -159,9 +160,9 @@
                       gltf-model="#model-glb" 
                       position="0 0 0" 
                       rotation="0 0 0" 
-                      scale="0.5 0.5 0.5"
+                      scale="8 8 8"
                       class="clickable"
-                      gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5">
+                      gesture-handler="minScale: 1; maxScale: 50; rotationFactor: 5">
             </a-entity>
 
         </a-entity>
@@ -170,15 +171,31 @@
     </a-scene>
 
     <script>
-      // GPS認識のステータス表示制御
+      // 対策：5秒経ってもGPSイベントが来なくても、強制的に「Searching...」を消す
+      // これにより、GPS感度が悪くても画面操作が可能になります。
+      setTimeout(() => {
+        const gpsStatus = document.getElementById('gps-status');
+        if(gpsStatus) {
+            gpsStatus.style.opacity = '0';
+            setTimeout(() => gpsStatus.style.display = 'none', 500);
+        }
+      }, 5000);
+
+      // 通常のGPSイベント検知
       window.addEventListener('gps-camera-update-position', function(e) {
-        document.getElementById('gps-status').style.display = 'none';
+        const gpsStatus = document.getElementById('gps-status');
+        if(gpsStatus) {
+            gpsStatus.textContent = "GPS Found";
+            setTimeout(() => {
+                gpsStatus.style.opacity = '0';
+                setTimeout(() => gpsStatus.style.display = 'none', 500);
+            }, 2000);
+        }
       });
       
-      // モデルの操作制御（常に表示扱い）
+      // モデル操作の有効化
       const modelEntity = document.getElementById('my-model');
       if(modelEntity) {
-        // ロケーションベースARでは「見つけた」イベントがないため、初期ロード後に操作を有効化
         setTimeout(() => {
              if(modelEntity.components['gesture-handler']) {
                  modelEntity.components['gesture-handler'].isVisible = true;
