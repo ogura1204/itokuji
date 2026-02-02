@@ -7,139 +7,105 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
     <script>
-      // ▼▼▼ 修正版：確実なスライドショーコンポーネント ▼▼▼
+      // スライドショーコンポーネント
       AFRAME.registerComponent('auto-slideshow', {
         schema: {
-          srcs: { type: 'array' }, // 画像IDリスト
-          interval: { type: 'number', default: 3000 } // 画像が表示されている時間
+          srcs: { type: 'array' }, 
+          interval: { type: 'number', default: 3000 }
         },
         init: function () {
           this.el.setAttribute('src', this.data.srcs[0]);
-          this.el.setAttribute('material', 'transparent: true; opacity: 1'); // 初期状態は不透明
+          this.el.setAttribute('material', 'transparent: true; opacity: 1');
           this.index = 0;
           this.timer = null;
-          this.isAnimating = false;
         },
         play: function() {
           if (this.timer) return;
-          // 指定時間ごとに切り替え処理を開始
-          this.timer = setInterval(() => {
-            this.transition();
-          }, this.data.interval + 2000); // 表示時間 + アニメーション時間(2秒)
+          this.timer = setInterval(() => { this.nextSlide(); }, this.data.interval);
         },
         pause: function() {
           if (this.timer) clearInterval(this.timer);
           this.timer = null;
-          // 停止時は不透明に戻して表示を維持
-          this.el.setAttribute('animation', 'property: material.opacity; to: 1; dur: 100');
+          this.el.setAttribute('material', 'opacity', 1);
         },
-        transition: function () {
-          if (this.isAnimating) return;
-          this.isAnimating = true;
+        nextSlide: function () {
           const el = this.el;
+          // フェードアウト
+          el.setAttribute('animation', { property: 'material.opacity', from: 1, to: 0, dur: 500, easing: 'linear' });
 
-          // 1. フェードアウト (1秒かけて透明に)
-          el.removeAttribute('animation'); // 前のアニメーションをクリア
-          el.setAttribute('animation', {
-            property: 'material.opacity',
-            from: 1,
-            to: 0,
-            dur: 1000,
-            easing: 'easeInOutQuad'
-          });
-
-          // 2. 画像切り替え (1秒後)
           setTimeout(() => {
+            // 画像切り替え
             this.index = (this.index + 1) % this.data.srcs.length;
             el.setAttribute('src', this.data.srcs[this.index]);
             
-            // アスペクト比修正
+            // アスペクト比調整
             const img = document.querySelector(this.data.srcs[this.index]);
             if(img && img.naturalWidth) {
                 const ratio = img.naturalHeight / img.naturalWidth;
                 el.setAttribute('height', ratio);
             }
 
-            // 3. フェードイン (さらに1秒かけて不透明に)
+            // フェードイン
             el.removeAttribute('animation');
-            el.setAttribute('animation', {
-              property: 'material.opacity',
-              from: 0,
-              to: 1,
-              dur: 1000,
-              easing: 'easeInOutQuad'
-            });
-
-            // アニメーション完了フラグ解除
-            setTimeout(() => {
-                this.isAnimating = false;
-            }, 1000);
-
-          }, 1000); // フェードアウト待ち時間
+            el.setAttribute('animation', { property: 'material.opacity', from: 0, to: 1, dur: 500, easing: 'linear' });
+          }, 500);
         }
       });
     </script>
 
     <style>
-      /* 全体デザイン：高級感のある明朝体・黒ベース */
-      body { margin: 0; overflow: hidden; font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif; background: #000; }
+      body { margin: 0; overflow: hidden; font-family: "Yu Mincho", serif; background: #000; }
 
-      /* ローディング画面 */
+      /* ローディング */
       #loading {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background-color: #0a0a0a; z-index: 99999;
         display: flex; flex-direction: column; justify-content: center; align-items: center;
-        transition: opacity 1.2s ease-out;
+        transition: opacity 0.5s ease-out;
       }
       .loader {
         width: 50px; height: 50px;
         border: 1px solid rgba(197, 160, 89, 0.3);
-        border-top: 1px solid #C5A059; /* シャンパンゴールド */
+        border-top: 1px solid #C5A059;
         border-radius: 50%;
-        animation: spin 1.5s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+        animation: spin 1.5s linear infinite;
       }
-      #loading-text {
-        margin-top: 20px; color: #C5A059; font-size: 12px; letter-spacing: 4px; text-transform: uppercase;
-      }
+      #loading-text { margin-top: 20px; color: #C5A059; font-size: 12px; letter-spacing: 4px; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+      /* ガイド */
+      #scan-guide {
+        position: fixed; top: 20px; width: 100%; text-align: center;
+        color: #fff; font-size: 14px; letter-spacing: 1px;
+        background: rgba(0,0,0,0.5); padding: 10px 0;
+        pointer-events: none; z-index: 8000;
+      }
       /* フッター */
       #footer-frame {
-        position: fixed; bottom: 0; left: 0; width: 100%; height: 80px;
-        background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(10px);
+        position: fixed; bottom: 0; left: 0; width: 100%; height: 60px;
+        background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
         border-top: 1px solid rgba(197, 160, 89, 0.3);
         display: flex; justify-content: center; align-items: center;
         z-index: 9999; cursor: pointer;
       }
-      .footer-text {
-        color: #f0f0f0; font-size: 13px; letter-spacing: 2px;
-        font-weight: 300; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-      }
-      
-      /* スキャンガイド */
-      #scan-guide {
-        position: fixed; top: 20px; width: 100%; text-align: center;
-        color: rgba(255,255,255,0.7); font-size: 11px; letter-spacing: 2px;
-        pointer-events: none; z-index: 8000;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-      }
+      .footer-text { color: #fff; font-size: 12px; letter-spacing: 1px; }
     </style>
   </head>
   <body>
 
     <div id="loading">
       <div class="loader"></div>
-      <div id="loading-text">Loading Experience</div>
+      <div id="loading-text">LOADING...</div>
     </div>
 
-    <div id="scan-guide">建物の写真にかざしてください</div>
+    <div id="scan-guide">建物を映してください</div>
 
     <div id="footer-frame">
       <div class="footer-text">Tap to Open Website</div>
     </div>
 
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets3.mind; uiError:yes; uiLoading:no;" 
+      mindar-image="imageTargetSrc: ./targets3.mind; uiError:yes; uiLoading:no; filterMinCF:0.0001; filterBeta: 0.001;" 
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights" 
       vr-mode-ui="enabled: false" 
@@ -159,50 +125,63 @@
 
       <a-entity mindar-image-target="targetIndex: 0">
         
-        <a-plane color="black" opacity="0.6" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
-        
-        <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
-        <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
-        
-        <a-image id="slideshow-1" 
-                 position="0 0 0" width="1" height="0.75"
-                 auto-slideshow="srcs: #bldg1-1, #bldg1-2, #bldg1-3; interval: 3000">
-        </a-image>
+        <a-entity scale="0.5 0.5 0.5" position="0 0 0">
+            
+            <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+            
+            <a-image id="slideshow-1" 
+                     position="0 0 0" width="1" height="0.75"
+                     auto-slideshow="srcs: #bldg1-1, #bldg1-2, #bldg1-3; interval: 3000">
+            </a-image>
+            
+            <a-text value="BUILDING A" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
 
-        <a-text value="BUILDING A - EXTERIOR" align="center" position="0 -0.65 0" width="3" color="#ffffff" font="roboto"></a-text>
+        </a-entity>
       </a-entity>
-
 
       <a-entity mindar-image-target="targetIndex: 1">
-        <a-plane color="black" opacity="0.6" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
-        <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
-        <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
+        
+        <a-entity scale="0.5 0.5 0.5" position="0 0 0">
 
-        <a-image id="slideshow-2" 
-                 position="0 0 0" width="1" height="0.75"
-                 auto-slideshow="srcs: #bldg2-1, #bldg2-2, #bldg2-3; interval: 3000">
-        </a-image>
+            <a-plane color="black" opacity="0.7" width="1.1" height="1.3" position="0 0 -0.01"></a-plane>
+            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 0.55 0.01"></a-plane>
+            <a-plane color="#C5A059" width="1.05" height="0.005" position="0 -0.55 0.01"></a-plane>
 
-        <a-text value="BUILDING B - INTERIOR" align="center" position="0 -0.65 0" width="3" color="#ffffff" font="roboto"></a-text>
+            <a-image id="slideshow-2" 
+                     position="0 0 0" width="1" height="0.75"
+                     auto-slideshow="srcs: #bldg2-1, #bldg2-2, #bldg2-3; interval: 3000">
+            </a-image>
+            
+            <a-text value="BUILDING B" align="center" position="0 -0.65 0" width="3" color="#fff" font="roboto"></a-text>
+
+        </a-entity>
       </a-entity>
 
-      </a-scene>
+    </a-scene>
 
     <script>
       const loadingDiv = document.getElementById('loading');
       const footerFrame = document.getElementById('footer-frame');
       const sceneEl = document.querySelector('a-scene');
-
+      
       const slide1 = document.getElementById('slideshow-1');
       const slide2 = document.getElementById('slideshow-2');
 
-      // ロード完了処理
-      sceneEl.addEventListener('arReady', () => {
-        loadingDiv.style.opacity = 0;
-        setTimeout(() => { loadingDiv.style.display = 'none'; }, 1200);
-      });
+      // 安全装置付きロード処理
+      sceneEl.addEventListener('arReady', () => { hideLoading(); });
+      sceneEl.addEventListener('arError', () => { hideLoading(); alert("カメラエラー: 再読み込みしてください"); });
+      setTimeout(() => { hideLoading(); }, 10000);
 
-      // ターゲット認識時のイベント制御
+      function hideLoading() {
+        if(loadingDiv.style.display !== 'none') {
+            loadingDiv.style.opacity = 0;
+            setTimeout(() => { loadingDiv.style.display = 'none'; }, 500);
+        }
+      }
+
+      // スライドショー制御
       const targets = [
           { el: document.querySelector('[mindar-image-target="targetIndex: 0"]'), content: slide1 },
           { el: document.querySelector('[mindar-image-target="targetIndex: 1"]'), content: slide2 }
@@ -211,16 +190,13 @@
       targets.forEach(t => {
           if(!t.el) return;
           t.el.addEventListener('targetFound', () => {
-              // ターゲットを見つけたら再生開始
               if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].play();
           });
           t.el.addEventListener('targetLost', () => {
-              // ターゲットを見失ったら停止
               if(t.content.components['auto-slideshow']) t.content.components['auto-slideshow'].pause();
           });
       });
 
-      // フッターリンク
       footerFrame.addEventListener('click', () => {
         window.open('https://lykke-hygge-2.myshopify.com/', '_blank'); 
       });
