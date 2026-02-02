@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR (強制配置版)</title>
+    <title>町家の日 AR (調整ツール)</title>
     
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
@@ -11,38 +11,53 @@
     <style>
       body { margin: 0; overflow: hidden; font-family: sans-serif; }
       
-      /* 診断用パネル */
-      #info-panel {
+      /* ステータス表示（1行だけにする） */
+      #status-bar {
         position: fixed; top: 0; left: 0; width: 100%;
         background: rgba(0,0,0,0.8); color: lime;
-        padding: 5px; font-size: 11px; z-index: 9999;
-        pointer-events: none;
-        white-space: pre-wrap;
+        padding: 8px; font-size: 14px; text-align: center;
+        z-index: 9999; pointer-events: none;
       }
 
-      /* 強制配置ボタン（赤） */
-      #spawn-btn {
-        position: fixed; top: 60px; right: 10px;
-        background: #dc3545; color: white;
-        padding: 15px 20px; border: none; border-radius: 30px;
-        font-weight: bold; font-size: 16px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        z-index: 9999;
+      /* コントロールパネル */
+      #controls {
+        position: fixed; bottom: 12%; left: 0; width: 100%;
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+        pointer-events: auto; z-index: 9999;
       }
       
+      button {
+        background: rgba(255, 255, 255, 0.9); color: black;
+        border: 1px solid #ccc; padding: 10px 15px;
+        border-radius: 5px; font-weight: bold; font-size: 14px;
+      }
+      
+      button:active { background: #ddd; }
+
+      /* モード切替ボタン（赤） */
+      #mode-btn {
+        position: fixed; top: 50px; right: 10px;
+        background: #dc3545; color: white; border: none;
+        padding: 10px 20px; border-radius: 30px;
+        z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      }
+
       #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; }
       .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
     </style>
   </head>
   
   <body>
-    <div id="info-panel">
-GPS: Initializing...
-Target: 34.827494, 134.680157
-Model Status: Loading...
-    </div>
+    <div id="status-bar">初期化中...</div>
 
-    <button id="spawn-btn" onclick="forceSpawn()">📍 ここにモデルを置く</button>
+    <button id="mode-btn" onclick="toggleMode()">テスト: 目の前に固定</button>
+
+    <div id="controls">
+        <button onclick="adjustScale(0.5)">小さく</button>
+        <button onclick="adjustScale(2.0)">大きく</button>
+        <button onclick="adjustHeight(-1)">下げる</button>
+        <button onclick="adjustHeight(1)">上げる</button>
+    </div>
 
     <div id="footer-frame"><div class="f-text" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Tap to Open Shop</div></div>
 
@@ -56,111 +71,103 @@ Model Status: Loading...
         <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera gps-camera="gpsMinDistance: 0;" rotation-reader near="0.1" far="10000">
+      <a-camera gps-camera="gpsMinDistance: 0;" rotation-reader near="0.1" far="20000">
+          
+          <a-entity id="test-container" position="0 0 -5" visible="false">
+              <a-plane color="#ff00ff" shader="flat" width="0.5" height="0.5" position="0 2 0"></a-plane>
+              <a-text value="TEST MODE" align="center" position="0 2.5 0" scale="2 2 2"></a-text>
+              
+              <a-entity id="test-model-wrapper" position="0 -1 0" scale="1 1 1">
+                  <a-entity gltf-model="#model-glb"></a-entity>
+                  <a-box color="cyan" material="wireframe: true" scale="2 2 2"></a-box>
+              </a-entity>
+          </a-entity>
+      
       </a-camera>
 
       <a-light type="ambient" color="#ffffff" intensity="2.0"></a-light>
       <a-light type="directional" color="#ffffff" intensity="2.0" position="0 10 0"></a-light>
 
-      <a-entity id="move-container" position="0 -1000 0" visible="false">
-          
-          <a-box color="cyan" position="0 2 0" scale="0.5 4 0.5" material="opacity: 0.8"></a-box>
-          <a-text value="HERE!" color="white" align="center" position="0 4.5 0" scale="3 3 3" look-at="[gps-camera]"></a-text>
+      <a-entity id="gps-container" gps-entity-place="latitude: 34.82749460261197; longitude: 134.68015716788724;">
+        
+        <a-entity id="gps-model-wrapper" position="0 0 0" scale="5 5 5">
+            
+            <a-box color="blue" position="0 5 0" scale="1 10 1" material="opacity: 0.7"></a-box>
+            <a-text value="GPS TARGET" color="white" align="center" position="0 11 0" scale="5 5 5" look-at="[gps-camera]"></a-text>
 
-          <a-entity position="0 5 0" scale="2 2 2" look-at="[gps-camera]">
-              <a-plane color="black" opacity="0.6" width="2" height="0.8"></a-plane>
-              <a-text value="2026.8 OPEN" align="center" width="6" position="0 0 0.1"></a-text>
-          </a-entity>
+            <a-entity position="0 9 0" scale="2 2 2" look-at="[gps-camera]">
+                <a-plane color="black" opacity="0.7" width="2" height="0.8"></a-plane>
+                <a-text value="2026.8 OPEN" align="center" width="6" position="0 0 0.1"></a-text>
+            </a-entity>
 
-          <a-entity id="my-model"
-                    gltf-model="#model-glb" 
-                    position="0 0 0" 
-                    scale="5 5 5"
-                    animation="property: rotation; to: 0 360 0; dur: 20000; loop: true; easing: linear">
-          </a-entity>
+            <a-entity gltf-model="#model-glb" position="0 0 0"></a-entity>
+
+        </a-entity>
       </a-entity>
 
     </a-scene>
 
     <script>
-      // ログ出力用
-      const infoPanel = document.getElementById('info-panel');
-      function log(text) {
-          const current = infoPanel.innerText;
-          // 10行以上ならカット
-          const lines = current.split('\n');
-          if (lines.length > 8) lines.shift();
-          infoPanel.innerText = lines.join('\n') + '\n' + text;
-      }
+      const statusBar = document.getElementById('status-bar');
+      const testContainer = document.getElementById('test-container');
+      const gpsContainer = document.getElementById('gps-container');
+      const gpsWrapper = document.getElementById('gps-model-wrapper');
+      const testWrapper = document.getElementById('test-model-wrapper');
+      const modeBtn = document.getElementById('mode-btn');
 
-      // 1. モデル読み込み確認
-      document.querySelector('a-scene').addEventListener('loaded', () => {
-          log("Scene Loaded.");
-      });
-      document.querySelector('#model-glb').addEventListener('loaded', () => {
-          log("Model: Loaded OK ✅");
-      });
-      document.querySelector('#model-glb').addEventListener('error', (e) => {
-          log("Model: Load ERROR ❌");
-      });
-
-      // 2. GPS生データの監視
+      // GPS更新ログ（1行だけ更新）
       window.addEventListener('gps-camera-update-position', function(e) {
-          // 自分の位置
-          const myLat = e.detail.position.latitude.toFixed(6);
-          const myLon = e.detail.position.longitude.toFixed(6);
-          
-          // ターゲット位置 (34.827494, 134.680157)
-          const targetLat = 34.827494;
-          const targetLon = 134.680157;
-
-          // 簡易距離計算 (三平方の定理的な概算)
-          // 緯度1度≒111km, 経度1度≒91km(日本付近)
-          const dy = (targetLat - myLat) * 111000;
-          const dx = (targetLon - myLon) * 91000;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-
-          // 画面更新
-          // 常に最新のGPS情報を1行目に書き換える
-          const statusText = `GPS: Active (${myLat}, ${myLon})\nDist: Approx ${Math.round(dist)}m`;
-          
-          // パネルの先頭を書き換え（手抜き実装ですが動作優先）
-          const lines = infoPanel.innerText.split('\n');
-          lines[0] = statusText;
-          infoPanel.innerText = lines.join('\n');
+          const dist = document.querySelector('[gps-camera]').components['gps-camera'].distanceTo(gpsContainer.components['gps-entity-place'].coords);
+          statusBar.innerText = `GPS Active | Dist: ${Math.round(dist)}m | Current Scale: ${currentScale}`;
       });
 
-      // 3. 【最重要】強制配置機能
-      function forceSpawn() {
-          const camera = document.querySelector('[gps-camera]');
-          const container = document.getElementById('move-container');
-          const btn = document.getElementById('spawn-btn');
-          
-          // カメラの現在位置と向きを取得
-          const camPos = camera.object3D.position;
-          
-          // カメラの向いている方向ベクトルを取得
-          const direction = new THREE.Vector3();
-          camera.object3D.getWorldDirection(direction);
-          
-          // 「目の前 5メートル」を計算
-          // カメラ位置 + (方向 * 5m)
-          // y成分（高さ）は無視して、自分の足元と同じ高さにする
-          const spawnX = camPos.x + (direction.x * 5);
-          const spawnZ = camPos.z + (direction.z * 5);
-          const spawnY = camPos.y - 1.5; // カメラの高さ(約1.5m)分下げる＝地面
-          
-          // コンテナをそこに移動
-          container.object3D.position.set(spawnX, spawnY, spawnZ);
-          container.setAttribute('visible', 'true');
-          
-          // アニメーション停止（重い場合のため）
-          // container.removeAttribute('animation');
-
-          log(`Spawned at: ${Math.round(spawnX)}, ${Math.round(spawnZ)}`);
-          btn.innerText = "📍 再配置する";
-          btn.style.background = "#007BFF";
+      // モード切替
+      let isTestMode = false;
+      function toggleMode() {
+          isTestMode = !isTestMode;
+          if (isTestMode) {
+              // テストモード：GPS側を消して、カメラ前のオブジェクトを表示
+              gpsContainer.setAttribute('visible', 'false');
+              testContainer.setAttribute('visible', 'true');
+              modeBtn.innerText = "戻る: GPSモード";
+              modeBtn.style.background = "#007BFF";
+              statusBar.innerText = "テストモード: カメラの前に固定中";
+          } else {
+              // GPSモード
+              gpsContainer.setAttribute('visible', 'true');
+              testContainer.setAttribute('visible', 'false');
+              modeBtn.innerText = "テスト: 目の前に固定";
+              modeBtn.style.background = "#dc3545";
+          }
       }
+
+      // 調整ロジック
+      let currentScale = 5;
+      let currentHeight = 0;
+
+      function adjustScale(multiplier) {
+          currentScale *= multiplier;
+          // GPS用とテスト用両方に適用
+          gpsWrapper.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+          testWrapper.setAttribute('scale', `${currentScale/5} ${currentScale/5} ${currentScale/5}`); // テスト用は少し小さめに補正
+          
+          statusBar.innerText = `Scale: ${currentScale.toFixed(2)} | Height: ${currentHeight}m`;
+      }
+
+      function adjustHeight(meters) {
+          currentHeight += meters;
+          // GPS用のみ高さを変更（テスト用は目の前固定なので）
+          const currentPos = gpsWrapper.getAttribute('position');
+          gpsWrapper.setAttribute('position', {x: currentPos.x, y: currentHeight, z: currentPos.z});
+          
+          statusBar.innerText = `Scale: ${currentScale.toFixed(2)} | Height: ${currentHeight}m`;
+      }
+      
+      // モデル読み込み確認
+      document.querySelector('#model-glb').addEventListener('loaded', () => {
+          console.log("Model loaded");
+          statusBar.innerText += " (Model OK)";
+      });
     </script>
   </body>
 </html>
