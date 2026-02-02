@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR (マニュアル配置)</title>
+    <title>町家の日 AR (手持ち配置版)</title>
     
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -11,136 +11,164 @@
     <style>
       body { margin: 0; overflow: hidden; font-family: sans-serif; }
       
-      /* ボタンのデザイン */
-      #place-btn {
-        position: fixed; bottom: 15%; left: 50%; transform: translateX(-50%);
-        background: #dc3545; color: white;
-        padding: 15px 30px; border: none; border-radius: 50px;
-        font-weight: bold; font-size: 18px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      /* 操作パネル */
+      #ui-layer {
+        position: fixed; bottom: 0; left: 0; width: 100%; height: 25%;
+        background: rgba(0,0,0,0.6);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
         z-index: 9999;
       }
-      
-      #status {
-        position: fixed; top: 10px; left: 0; width: 100%;
-        text-align: center; color: lime; background: rgba(0,0,0,0.5);
-        padding: 5px; z-index: 9998; pointer-events: none;
-      }
 
-      #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-      .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
+      /* 配置確定ボタン */
+      #place-btn {
+        background: #dc3545; color: white;
+        padding: 12px 40px; border: none; border-radius: 30px;
+        font-weight: bold; font-size: 18px; margin-bottom: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      }
+      
+      /* 調整ボタン群 */
+      .ctrl-row { display: flex; gap: 15px; margin-bottom: 5px; }
+      .ctrl-btn {
+        background: white; border: 1px solid #ccc;
+        padding: 8px 15px; border-radius: 5px; font-weight: bold;
+      }
+      .ctrl-btn:active { background: #ddd; }
+
+      /* ステータス */
+      #status-msg {
+        position: fixed; top: 10px; left: 0; width: 100%;
+        text-align: center; color: yellow; font-weight: bold;
+        text-shadow: 1px 1px 2px black; pointer-events: none; z-index: 9998;
+      }
     </style>
   </head>
   
   <body>
-    <div id="status">AR Ready. ボタンを押して配置してください</div>
-    
-    <button id="place-btn" onclick="placeModel()">📍 目の前に配置する</button>
+    <div id="status-msg">モデルを読み込んでいます...</div>
 
-    <div id="footer-frame"><div class="f-text" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Tap to Open Shop</div></div>
+    <div id="ui-layer">
+        <div class="ctrl-row">
+            <button class="ctrl-btn" onclick="changeScale(0.5)">縮小</button>
+            <button class="ctrl-btn" onclick="changeScale(2.0)">拡大</button>
+            <button class="ctrl-btn" onclick="changeDist(0.5)">遠くへ</button>
+            <button class="ctrl-btn" onclick="changeDist(-0.5)">近くへ</button>
+        </div>
+        <button id="place-btn" onclick="togglePlace()">📍 ここに固定する</button>
+        <div style="color:white; font-size:10px; margin-top:5px;" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Shop Link</div>
+    </div>
 
     <a-scene
       embedded
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
       vr-mode-ui="enabled: false"
-      renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;">
+      renderer="colorManagement: true; physicallyCorrectLights: true;">
 
       <a-assets>
         <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera id="camera" position="0 0 0" look-controls="enabled: false" near="0.01" far="10000">
+      <a-camera id="camera" position="0 0 0" near="0.01" far="10000">
+          
+          <a-entity id="ar-content" position="0 -0.5 -3" scale="0.5 0.5 0.5">
+              
+              <a-box color="red" position="0 2 0" scale="0.5 0.5 0.5" 
+                     animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+              
+              <a-entity position="0 3.5 0" scale="2 2 2">
+                  <a-plane color="black" opacity="0.6" width="2" height="0.8"></a-plane>
+                  <a-text value="2026.8 OPEN" align="center" width="6" position="0 0.1 0.1"></a-text>
+                  <a-text value="GRAND OPEN" align="center" color="gold" width="4" position="0 -0.1 0.1"></a-text>
+              </a-entity>
+
+              <a-entity id="my-model" gltf-model="#model-glb"></a-entity>
+
+          </a-entity>
       </a-camera>
 
       <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
-      <a-light type="directional" color="#ffffff" intensity="2.0" position="1 2 1"></a-light>
-
-
-      <a-entity id="model-container" visible="false" position="0 0 -5">
-          
-          <a-box color="red" position="-1.5 1 0" scale="0.5 0.5 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"></a-box>
-          
-          <a-entity position="0 4.5 0" scale="2 2 2" look-at="[camera]">
-                <a-plane color="black" opacity="0.7" width="2" height="0.8"></a-plane>
-                <a-plane color="#C5A059" width="1.8" height="0.02" position="0 -0.2 0.01"></a-plane>
-                <a-text value="2026.8 OPEN" align="center" width="6" position="0 0.1 0.05"></a-text>
-                <a-text value="GRAND OPEN" align="center" color="#C5A059" width="4" position="0 -0.1 0.05"></a-text>
-          </a-entity>
-
-          <a-entity id="my-model"
-                    gltf-model="#model-glb" 
-                    position="0 0 0" 
-                    scale="0.5 0.5 0.5">
-          </a-entity>
-          
-      </a-entity>
+      <a-light type="directional" color="#ffffff" intensity="1.5" position="0 10 0"></a-light>
 
     </a-scene>
 
     <script>
-      // ビルボード処理（メッセージを常にカメラに向ける）
-      AFRAME.registerComponent('look-at', {
-        schema: { type: 'selector' },
-        tick: function () {
-          this.el.object3D.lookAt(this.data.object3D.position);
-        }
-      });
+      const content = document.getElementById('ar-content');
+      const camera = document.getElementById('camera');
+      const scene = document.querySelector('a-scene');
+      const btn = document.getElementById('place-btn');
+      const statusMsg = document.getElementById('status-msg');
 
-      // 配置ロジック
-      function placeModel() {
-          const container = document.getElementById('model-container');
-          const camera = document.getElementById('camera');
-          const status = document.getElementById('status');
-          
-          // カメラの現在の回転情報を取得（Y軸回転のみ）
-          const camRot = camera.getAttribute('rotation');
-          
-          // コンテナを表示
-          container.setAttribute('visible', 'true');
-          
-          // カメラの「正面」に配置するため、回転をリセットしてカメラに追従させない
-          // AR.jsのカメラは世界座標で動くため、
-          // 「今のカメラの位置」と「向き」を計算して、その5メートル先に置くのが正解ですが、
-          // もっと単純に「カメラの子要素」として追従させるとブレるので、
-          // ここでは「World座標 0,0,-5」あたりの初期位置に、カメラの向きだけ合わせます。
-          
-          // シンプル策: 
-          // ユーザーに「建設予定地の方を向いてください」と思わせて、
-          // カメラの目の前（Z軸マイナス方向）にコンテナを移動させる。
-          
-          // カメラの方向ベクトルを取得
-          const direction = new THREE.Vector3();
-          camera.object3D.getWorldDirection(direction);
-          
-          // 現在位置
-          const pos = camera.object3D.position;
-          
-          // 5メートル先
-          const distance = 5;
-          const newPos = {
-              x: pos.x + direction.x * distance,
-              y: pos.y - 1.5, // 地面の高さへ補正
-              z: pos.z + direction.z * distance
-          };
-          
-          // コンテナを移動
-          container.setAttribute('position', newPos);
-          
-          // モデルの向きをカメラに向ける（初期化）
-          container.setAttribute('rotation', `0 ${camRot.y} 0`);
+      let isPlaced = false;
 
-          status.innerText = "配置完了！周りを見渡してください";
-          
-          // モデル読み込みチェック
-          const model = document.getElementById('my-model');
-          if(!model.getObject3D('mesh')) {
-              status.innerText += " (モデル読込中...)";
+      // 1. 固定・解除の切り替え
+      function togglePlace() {
+          if (!isPlaced) {
+              // 【固定する処理】
+              // 現在のワールド座標を取得
+              const worldPos = new THREE.Vector3();
+              const worldRot = new THREE.Quaternion();
+              const worldScale = new THREE.Vector3();
+              
+              content.object3D.getWorldPosition(worldPos);
+              content.object3D.getWorldQuaternion(worldRot);
+              content.object3D.getWorldScale(worldScale);
+
+              // カメラから切り離して、シーン直下に移動
+              content.parentNode.removeChild(content);
+              scene.appendChild(content);
+
+              // 座標を再適用
+              content.object3D.position.copy(worldPos);
+              content.object3D.quaternion.copy(worldRot);
+              content.object3D.scale.copy(worldScale);
+
+              btn.innerText = "🔄 持ち運ぶ（リセット）";
+              btn.style.background = "#007BFF";
+              statusMsg.innerText = "固定しました。離れて見ることができます。";
+              isPlaced = true;
+
+          } else {
+              // 【持ち運ぶ処理（リセット）】
+              // 再びカメラの子要素に戻す
+              content.parentNode.removeChild(content);
+              camera.appendChild(content);
+              
+              // 初期位置に戻す
+              content.setAttribute('position', '0 -0.5 -3');
+              content.setAttribute('rotation', '0 0 0');
+              
+              btn.innerText = "📍 ここに固定する";
+              btn.style.background = "#dc3545";
+              statusMsg.innerText = "移動モード：スマホを動かすとついてきます";
+              isPlaced = false;
           }
       }
-      
-      // モデル読み込み完了通知
+
+      // 2. 調整機能
+      function changeScale(ratio) {
+          const current = content.object3D.scale;
+          content.object3D.scale.set(current.x * ratio, current.y * ratio, current.z * ratio);
+          statusMsg.innerText = `サイズ変更: ${(current.x).toFixed(2)}`;
+      }
+
+      function changeDist(val) {
+          // 固定後は動かせないようにする
+          if(isPlaced) {
+              statusMsg.innerText = "固定中は移動できません。「持ち運ぶ」を押してください";
+              return;
+          }
+          const current = content.getAttribute('position');
+          content.setAttribute('position', {x: current.x, y: current.y, z: current.z - val});
+          statusMsg.innerText = `距離変更: ${-(current.z - val).toFixed(1)}m 先`;
+      }
+
+      // 3. 読み込み確認
       document.querySelector('#model-glb').addEventListener('loaded', () => {
-          document.getElementById('status').innerText = "データ読込完了。ボタンを押してください";
+          statusMsg.innerText = "読み込み完了！画面に赤い箱は見えますか？";
+      });
+      document.querySelector('#model-glb').addEventListener('error', () => {
+          statusMsg.innerText = "【エラー】モデルファイルが見つかりません！";
+          statusMsg.style.color = "red";
       });
     </script>
   </body>
