@@ -3,194 +3,147 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR (安定配置版)</title>
+    <title>町家の日 GPS AR (Geospatial Like)</title>
     
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src='https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js'></script>
     
     <style>
-      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      body { margin: 0; overflow: hidden; font-family: "Yu Mincho", serif; }
       
-      /* UIパネル */
-      #ui-layer {
-        position: fixed; bottom: 0; left: 0; width: 100%; height: 25%;
-        background: rgba(0,0,0,0.6);
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        z-index: 9999;
+      /* 上部ステータス */
+      #status-bar {
+        position: fixed; top: 0; left: 0; width: 100%;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        color: white; padding: 10px; text-align: center;
+        z-index: 9999; pointer-events: none;
+        text-shadow: 1px 1px 2px black;
       }
 
-      /* メインボタン */
-      #place-btn {
-        background: #dc3545; color: white;
-        padding: 12px 40px; border: none; border-radius: 30px;
-        font-weight: bold; font-size: 18px; margin-bottom: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      /* 補正コントローラー */
+      #controls {
+        position: fixed; bottom: 12%; left: 0; width: 100%;
+        display: flex; flex-direction: column; align-items: center; gap: 5px;
+        z-index: 9999; pointer-events: auto;
       }
+      .row { display: flex; gap: 10px; }
       
-      /* 調整ボタン */
-      .ctrl-row { display: flex; gap: 15px; margin-bottom: 5px; }
-      .ctrl-btn {
-        background: white; border: 1px solid #ccc;
-        padding: 8px 15px; border-radius: 5px; font-weight: bold;
+      button {
+        background: rgba(255, 255, 255, 0.2); 
+        color: white; border: 1px solid white;
+        width: 50px; height: 40px; border-radius: 5px;
+        font-weight: bold; backdrop-filter: blur(5px);
       }
-      .ctrl-btn:active { background: #ddd; }
+      button:active { background: rgba(255, 255, 255, 0.5); }
+      
+      .label-btn { width: auto; padding: 0 10px; font-size: 12px; border: none; background: none; }
 
-      /* ステータス */
-      #status-msg {
-        position: fixed; top: 10px; left: 0; width: 100%;
-        text-align: center; color: yellow; font-weight: bold;
-        text-shadow: 1px 1px 2px black; pointer-events: none; z-index: 9998;
-      }
+      #footer-frame { position: fixed; bottom: 0; left: 0; width: 100%; height: 10%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+      .f-text { color: white; font-size: 12px; pointer-events: auto; cursor: pointer; padding: 10px; }
     </style>
-
-    <script>
-      // 【重要】カメラ追従コンポーネント
-      // モデルを再読み込みさせず、毎フレーム座標だけを更新して「持っている」ように見せる
-      AFRAME.registerComponent('camera-follower', {
-        schema: {
-          active: { default: true }, // trueなら追従、falseなら固定
-          distance: { default: 3.0 } // カメラからの距離
-        },
-        tick: function () {
-          if (!this.data.active) return; // 固定モードなら何もしない
-
-          const camera = this.el.sceneEl.camera;
-          if (!camera) return;
-
-          // カメラの方向と位置を取得
-          const direction = new THREE.Vector3();
-          camera.getWorldDirection(direction); // 向いている方向
-          direction.y = 0; // 地面に水平にする（見上げてもモデルが空に飛ばないように）
-          direction.normalize();
-
-          const position = new THREE.Vector3();
-          camera.getWorldPosition(position); // カメラの現在地
-
-          // 「目の前○メートル」の位置を計算
-          // カメラ位置 + (方向 × 距離)
-          const targetPos = position.clone().add(direction.multiplyScalar(this.data.distance));
-          
-          // 高さは地面(-1.5mくらい)に固定
-          // ※AR.jsのWebcamモードではカメラ高さが0〜1.6m付近になるため、適宜調整
-          targetPos.y = position.y - 1.0; 
-
-          // モデルに適用
-          this.el.object3D.position.copy(targetPos);
-
-          // モデルの向きをカメラに向ける（Y軸回転のみ）
-          const lookAtPos = position.clone();
-          lookAtPos.y = targetPos.y; // 高さを合わせることで傾き防止
-          this.el.object3D.lookAt(lookAtPos);
-          // lookAtだと背面が向く場合があるので180度反転
-          this.el.object3D.rotateY(Math.PI); 
-        }
-      });
-    </script>
   </head>
   
   <body>
-    <div id="status-msg">モデル読み込み中...</div>
-
-    <div id="ui-layer">
-        <div class="ctrl-row">
-            <button class="ctrl-btn" onclick="adjustScale(0.8)">縮小</button>
-            <button class="ctrl-btn" onclick="adjustScale(1.25)">拡大</button>
-            <button class="ctrl-btn" onclick="adjustDist(0.5)">遠くへ</button>
-            <button class="ctrl-btn" onclick="adjustDist(-0.5)">近くへ</button>
-        </div>
-        <button id="place-btn" onclick="toggleMode()">📍 ここに固定する</button>
-        <div style="color:white; font-size:10px; margin-top:5px;" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Shop Link</div>
+    <div id="status-bar">
+        GPS 取得中...<br>
+        <span id="dist-label" style="font-size: 1.2em; color: yellow;">--- m</span>
     </div>
 
+    <div id="controls">
+        <button class="label-btn">位置調整</button>
+        <div class="row">
+            <button onclick="moveModel('z', -1)">奥</button>
+        </div>
+        <div class="row">
+            <button onclick="moveModel('x', -1)">左</button>
+            <button onclick="moveModel('y', -1)">下</button>
+            <button onclick="moveModel('y', 1)">上</button>
+            <button onclick="moveModel('x', 1)">右</button>
+        </div>
+        <div class="row">
+            <button onclick="moveModel('z', 1)">手前</button>
+        </div>
+        <div class="row" style="margin-top: 10px;">
+             <button onclick="scaleModel(0.9)" style="width:auto; padding:0 10px;">縮小</button>
+             <button onclick="scaleModel(1.1)" style="width:auto; padding:0 10px;">拡大</button>
+        </div>
+    </div>
+
+    <div id="footer-frame"><div class="f-text" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Tap to Open Shop</div></div>
+
     <a-scene
-      embedded
-      arjs="sourceType: webcam; debugUIEnabled: false;"
       vr-mode-ui="enabled: false"
+      embedded
+      arjs='sourceType: webcam; videoTexture: true; debugUIEnabled: false;'
       renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;">
 
       <a-assets>
         <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera id="camera" position="0 0 0" near="0.01" far="10000"></a-camera>
+      <a-camera gps-new-camera='gpsMinDistance: 0; maxDistance: 1000;' near="0.1" far="10000" rotation-reader></a-camera>
 
       <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
-      <a-light type="directional" color="#ffffff" intensity="1.5" position="0 10 0"></a-light>
+      <a-light type="directional" color="#ffffff" intensity="2.0" position="0 10 0"></a-light>
 
-      <a-entity id="model-wrapper" camera-follower="active: true; distance: 3">
-          
-          <a-box color="red" position="0 2 0" scale="0.3 0.3 0.3" 
-                 animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
-          
-          <a-entity position="0 3.5 0" scale="2 2 2">
-              <a-plane color="black" opacity="0.6" width="2" height="0.8"></a-plane>
-              <a-text value="2026.8 OPEN" align="center" width="6" position="0 0.1 0.1"></a-text>
-              <a-text value="GRAND OPEN" align="center" color="gold" width="4" position="0 -0.1 0.1"></a-text>
-          </a-entity>
+      <a-entity gps-new-entity-place="latitude: 34.82749460261197; longitude: 134.68015716788724;">
+        
+        <a-entity id="manual-adjust-wrapper" position="0 0 0">
+            
+            <a-entity look-at="[gps-new-camera]">
 
-          <a-entity id="my-model" 
-                    gltf-model="#model-glb"
-                    scale="0.5 0.5 0.5">
-          </a-entity>
+                <a-entity position="0 9 0" scale="2 2 2">
+                    <a-plane color="black" opacity="0.6" width="2" height="0.8"></a-plane>
+                    <a-plane color="#C5A059" width="1.8" height="0.02" position="0 -0.2 0.01"></a-plane>
+                    <a-text value="2026.8 OPEN" align="center" width="6" position="0 0.1 0.1"></a-text>
+                    <a-text value="GRAND OPEN" align="center" color="#C5A059" width="4" position="0 -0.1 0.1"></a-text>
+                </a-entity>
+
+                <a-entity id="my-model"
+                          gltf-model="#model-glb" 
+                          position="0 0 0" 
+                          scale="5 5 5">
+                </a-entity>
+                
+            </a-entity>
+
+        </a-entity>
       </a-entity>
 
     </a-scene>
 
     <script>
-      const wrapper = document.getElementById('model-wrapper');
+      // ビルボード処理（常に自分の方を向く）
+      AFRAME.registerComponent('look-at', {
+        schema: { type: 'selector' },
+        init: function () {},
+        tick: function () {
+          this.el.object3D.lookAt(this.el.sceneEl.camera.position);
+        }
+      });
+
+      const adjustWrapper = document.getElementById('manual-adjust-wrapper');
       const model = document.getElementById('my-model');
-      const btn = document.getElementById('place-btn');
-      const statusMsg = document.getElementById('status-msg');
+      const distLabel = document.getElementById('dist-label');
+      const statusBar = document.getElementById('status-bar');
 
-      let isFollowing = true;
-      let currentDist = 3.0;
-
-      // 1. 固定・解除切り替え
-      function toggleMode() {
-        isFollowing = !isFollowing;
-        
-        // コンポーネントの active プロパティを書き換える
-        wrapper.setAttribute('camera-follower', 'active', isFollowing);
-
-        if (isFollowing) {
-            btn.innerText = "📍 ここに固定する";
-            btn.style.background = "#dc3545"; // 赤
-            statusMsg.innerText = "移動中：スマホについてきます";
-        } else {
-            btn.innerText = "🔄 持ち運ぶ（リセット）";
-            btn.style.background = "#007BFF"; // 青
-            statusMsg.innerText = "固定しました！離れて見ることができます";
-        }
-      }
-
-      // 2. サイズ調整
-      function adjustScale(ratio) {
-        const current = model.object3D.scale;
-        model.object3D.scale.set(current.x * ratio, current.y * ratio, current.z * ratio);
-        statusMsg.innerText = `サイズ調整: ${(current.x).toFixed(2)}`;
-      }
-
-      // 3. 距離調整
-      function adjustDist(delta) {
-        if (!isFollowing) {
-             statusMsg.innerText = "固定中は移動できません。「持ち運ぶ」を押してください";
-             return;
-        }
-        currentDist += delta;
-        if(currentDist < 0.5) currentDist = 0.5; // 近すぎ防止
-        
-        wrapper.setAttribute('camera-follower', 'distance', currentDist);
-        statusMsg.innerText = `距離調整: ${currentDist.toFixed(1)}m 先`;
-      }
-
-      // 4. ロード確認
-      document.querySelector('#model-glb').addEventListener('loaded', () => {
-          statusMsg.innerText = "準備完了！";
+      // 距離表示の更新
+      window.addEventListener('gps-camera-update-position', function(e) {
+          // カメラとターゲットの距離を計算
+          const camera = document.querySelector('[gps-new-camera]');
+          const target = document.querySelector('[gps-new-entity-place]');
+          
+          if(camera && target) {
+             const dist = camera.components['gps-new-camera'].threeCamera.position.distanceTo(target.object3D.position);
+             // AR.jsの座標系スケールに合わせた概算距離
+             // ※gps-new-cameraは座標系が独特なため、あくまで目安表示
+             distLabel.innerText = "GPS Active (近くを探してください)";
+             statusBar.style.color = "lime";
+          }
       });
-      document.querySelector('#model-glb').addEventListener('error', () => {
-          statusMsg.innerText = "エラー：モデルが見つかりません";
-          statusMsg.style.color = "red";
-      });
-    </script>
-  </body>
-</html>
+
+      // 手動位置補正
+      function moveModel(axis, val) {
+          const currentPos = adjustWrapper.getAttribute('position');
+          // 移動量を大きくする（屋外スケールのため 2m 単位）
+          const step = 2.0;
