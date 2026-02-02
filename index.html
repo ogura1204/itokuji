@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>町家の日 AR (手持ち配置版)</title>
+    <title>町家の日 AR (安定配置版)</title>
     
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -11,7 +11,7 @@
     <style>
       body { margin: 0; overflow: hidden; font-family: sans-serif; }
       
-      /* 操作パネル */
+      /* UIパネル */
       #ui-layer {
         position: fixed; bottom: 0; left: 0; width: 100%; height: 25%;
         background: rgba(0,0,0,0.6);
@@ -19,7 +19,7 @@
         z-index: 9999;
       }
 
-      /* 配置確定ボタン */
+      /* メインボタン */
       #place-btn {
         background: #dc3545; color: white;
         padding: 12px 40px; border: none; border-radius: 30px;
@@ -27,7 +27,7 @@
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       }
       
-      /* 調整ボタン群 */
+      /* 調整ボタン */
       .ctrl-row { display: flex; gap: 15px; margin-bottom: 5px; }
       .ctrl-btn {
         background: white; border: 1px solid #ccc;
@@ -42,19 +42,63 @@
         text-shadow: 1px 1px 2px black; pointer-events: none; z-index: 9998;
       }
     </style>
+
+    <script>
+      // 【重要】カメラ追従コンポーネント
+      // モデルを再読み込みさせず、毎フレーム座標だけを更新して「持っている」ように見せる
+      AFRAME.registerComponent('camera-follower', {
+        schema: {
+          active: { default: true }, // trueなら追従、falseなら固定
+          distance: { default: 3.0 } // カメラからの距離
+        },
+        tick: function () {
+          if (!this.data.active) return; // 固定モードなら何もしない
+
+          const camera = this.el.sceneEl.camera;
+          if (!camera) return;
+
+          // カメラの方向と位置を取得
+          const direction = new THREE.Vector3();
+          camera.getWorldDirection(direction); // 向いている方向
+          direction.y = 0; // 地面に水平にする（見上げてもモデルが空に飛ばないように）
+          direction.normalize();
+
+          const position = new THREE.Vector3();
+          camera.getWorldPosition(position); // カメラの現在地
+
+          // 「目の前○メートル」の位置を計算
+          // カメラ位置 + (方向 × 距離)
+          const targetPos = position.clone().add(direction.multiplyScalar(this.data.distance));
+          
+          // 高さは地面(-1.5mくらい)に固定
+          // ※AR.jsのWebcamモードではカメラ高さが0〜1.6m付近になるため、適宜調整
+          targetPos.y = position.y - 1.0; 
+
+          // モデルに適用
+          this.el.object3D.position.copy(targetPos);
+
+          // モデルの向きをカメラに向ける（Y軸回転のみ）
+          const lookAtPos = position.clone();
+          lookAtPos.y = targetPos.y; // 高さを合わせることで傾き防止
+          this.el.object3D.lookAt(lookAtPos);
+          // lookAtだと背面が向く場合があるので180度反転
+          this.el.object3D.rotateY(Math.PI); 
+        }
+      });
+    </script>
   </head>
   
   <body>
-    <div id="status-msg">モデルを読み込んでいます...</div>
+    <div id="status-msg">モデル読み込み中...</div>
 
     <div id="ui-layer">
         <div class="ctrl-row">
-            <button class="ctrl-btn" onclick="changeScale(0.5)">縮小</button>
-            <button class="ctrl-btn" onclick="changeScale(2.0)">拡大</button>
-            <button class="ctrl-btn" onclick="changeDist(0.5)">遠くへ</button>
-            <button class="ctrl-btn" onclick="changeDist(-0.5)">近くへ</button>
+            <button class="ctrl-btn" onclick="adjustScale(0.8)">縮小</button>
+            <button class="ctrl-btn" onclick="adjustScale(1.25)">拡大</button>
+            <button class="ctrl-btn" onclick="adjustDist(0.5)">遠くへ</button>
+            <button class="ctrl-btn" onclick="adjustDist(-0.5)">近くへ</button>
         </div>
-        <button id="place-btn" onclick="togglePlace()">📍 ここに固定する</button>
+        <button id="place-btn" onclick="toggleMode()">📍 ここに固定する</button>
         <div style="color:white; font-size:10px; margin-top:5px;" onclick="window.open('https://lykke-hygge-2.myshopify.com/', '_blank');">Shop Link</div>
     </div>
 
@@ -62,112 +106,89 @@
       embedded
       arjs="sourceType: webcam; debugUIEnabled: false;"
       vr-mode-ui="enabled: false"
-      renderer="colorManagement: true; physicallyCorrectLights: true;">
+      renderer="colorManagement: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0;">
 
       <a-assets>
         <a-asset-item id="model-glb" src="./model2.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera id="camera" position="0 0 0" near="0.01" far="10000">
-          
-          <a-entity id="ar-content" position="0 -0.5 -3" scale="0.5 0.5 0.5">
-              
-              <a-box color="red" position="0 2 0" scale="0.5 0.5 0.5" 
-                     animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
-              
-              <a-entity position="0 3.5 0" scale="2 2 2">
-                  <a-plane color="black" opacity="0.6" width="2" height="0.8"></a-plane>
-                  <a-text value="2026.8 OPEN" align="center" width="6" position="0 0.1 0.1"></a-text>
-                  <a-text value="GRAND OPEN" align="center" color="gold" width="4" position="0 -0.1 0.1"></a-text>
-              </a-entity>
-
-              <a-entity id="my-model" gltf-model="#model-glb"></a-entity>
-
-          </a-entity>
-      </a-camera>
+      <a-camera id="camera" position="0 0 0" near="0.01" far="10000"></a-camera>
 
       <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
       <a-light type="directional" color="#ffffff" intensity="1.5" position="0 10 0"></a-light>
 
+      <a-entity id="model-wrapper" camera-follower="active: true; distance: 3">
+          
+          <a-box color="red" position="0 2 0" scale="0.3 0.3 0.3" 
+                 animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+          
+          <a-entity position="0 3.5 0" scale="2 2 2">
+              <a-plane color="black" opacity="0.6" width="2" height="0.8"></a-plane>
+              <a-text value="2026.8 OPEN" align="center" width="6" position="0 0.1 0.1"></a-text>
+              <a-text value="GRAND OPEN" align="center" color="gold" width="4" position="0 -0.1 0.1"></a-text>
+          </a-entity>
+
+          <a-entity id="my-model" 
+                    gltf-model="#model-glb"
+                    scale="0.5 0.5 0.5">
+          </a-entity>
+      </a-entity>
+
     </a-scene>
 
     <script>
-      const content = document.getElementById('ar-content');
-      const camera = document.getElementById('camera');
-      const scene = document.querySelector('a-scene');
+      const wrapper = document.getElementById('model-wrapper');
+      const model = document.getElementById('my-model');
       const btn = document.getElementById('place-btn');
       const statusMsg = document.getElementById('status-msg');
 
-      let isPlaced = false;
+      let isFollowing = true;
+      let currentDist = 3.0;
 
-      // 1. 固定・解除の切り替え
-      function togglePlace() {
-          if (!isPlaced) {
-              // 【固定する処理】
-              // 現在のワールド座標を取得
-              const worldPos = new THREE.Vector3();
-              const worldRot = new THREE.Quaternion();
-              const worldScale = new THREE.Vector3();
-              
-              content.object3D.getWorldPosition(worldPos);
-              content.object3D.getWorldQuaternion(worldRot);
-              content.object3D.getWorldScale(worldScale);
+      // 1. 固定・解除切り替え
+      function toggleMode() {
+        isFollowing = !isFollowing;
+        
+        // コンポーネントの active プロパティを書き換える
+        wrapper.setAttribute('camera-follower', 'active', isFollowing);
 
-              // カメラから切り離して、シーン直下に移動
-              content.parentNode.removeChild(content);
-              scene.appendChild(content);
-
-              // 座標を再適用
-              content.object3D.position.copy(worldPos);
-              content.object3D.quaternion.copy(worldRot);
-              content.object3D.scale.copy(worldScale);
-
-              btn.innerText = "🔄 持ち運ぶ（リセット）";
-              btn.style.background = "#007BFF";
-              statusMsg.innerText = "固定しました。離れて見ることができます。";
-              isPlaced = true;
-
-          } else {
-              // 【持ち運ぶ処理（リセット）】
-              // 再びカメラの子要素に戻す
-              content.parentNode.removeChild(content);
-              camera.appendChild(content);
-              
-              // 初期位置に戻す
-              content.setAttribute('position', '0 -0.5 -3');
-              content.setAttribute('rotation', '0 0 0');
-              
-              btn.innerText = "📍 ここに固定する";
-              btn.style.background = "#dc3545";
-              statusMsg.innerText = "移動モード：スマホを動かすとついてきます";
-              isPlaced = false;
-          }
+        if (isFollowing) {
+            btn.innerText = "📍 ここに固定する";
+            btn.style.background = "#dc3545"; // 赤
+            statusMsg.innerText = "移動中：スマホについてきます";
+        } else {
+            btn.innerText = "🔄 持ち運ぶ（リセット）";
+            btn.style.background = "#007BFF"; // 青
+            statusMsg.innerText = "固定しました！離れて見ることができます";
+        }
       }
 
-      // 2. 調整機能
-      function changeScale(ratio) {
-          const current = content.object3D.scale;
-          content.object3D.scale.set(current.x * ratio, current.y * ratio, current.z * ratio);
-          statusMsg.innerText = `サイズ変更: ${(current.x).toFixed(2)}`;
+      // 2. サイズ調整
+      function adjustScale(ratio) {
+        const current = model.object3D.scale;
+        model.object3D.scale.set(current.x * ratio, current.y * ratio, current.z * ratio);
+        statusMsg.innerText = `サイズ調整: ${(current.x).toFixed(2)}`;
       }
 
-      function changeDist(val) {
-          // 固定後は動かせないようにする
-          if(isPlaced) {
-              statusMsg.innerText = "固定中は移動できません。「持ち運ぶ」を押してください";
-              return;
-          }
-          const current = content.getAttribute('position');
-          content.setAttribute('position', {x: current.x, y: current.y, z: current.z - val});
-          statusMsg.innerText = `距離変更: ${-(current.z - val).toFixed(1)}m 先`;
+      // 3. 距離調整
+      function adjustDist(delta) {
+        if (!isFollowing) {
+             statusMsg.innerText = "固定中は移動できません。「持ち運ぶ」を押してください";
+             return;
+        }
+        currentDist += delta;
+        if(currentDist < 0.5) currentDist = 0.5; // 近すぎ防止
+        
+        wrapper.setAttribute('camera-follower', 'distance', currentDist);
+        statusMsg.innerText = `距離調整: ${currentDist.toFixed(1)}m 先`;
       }
 
-      // 3. 読み込み確認
+      // 4. ロード確認
       document.querySelector('#model-glb').addEventListener('loaded', () => {
-          statusMsg.innerText = "読み込み完了！画面に赤い箱は見えますか？";
+          statusMsg.innerText = "準備完了！";
       });
       document.querySelector('#model-glb').addEventListener('error', () => {
-          statusMsg.innerText = "【エラー】モデルファイルが見つかりません！";
+          statusMsg.innerText = "エラー：モデルが見つかりません";
           statusMsg.style.color = "red";
       });
     </script>
