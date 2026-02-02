@@ -76,8 +76,8 @@ f<!DOCTYPE html>
       gesture-detector>
       
       <a-assets>
-        <video id="vid-asset" src="./video.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline muted></video>
-        <a-asset-item id="model-asset" src="./model.glb"></a-asset-item>
+        <video id="vid-asset" src="./fl.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline muted></video>
+        <a-asset-item id="model-asset" src="./model2.glb"></a-asset-item>
         <img id="slide1-1" src="./pers_1.png" /><img id="slide1-2" src="./pers_1_sub1.png" /><img id="slide1-3" src="./pers_1_sub2.png" /> 
         <img id="slide2-1" src="./pers_2.png" /><img id="slide2-2" src="./pers_2_sub1.png" /><img id="slide2-3" src="./pers_2_sub2.png" />
       </a-assets>
@@ -106,7 +106,7 @@ f<!DOCTYPE html>
       </a-entity>
 
       <a-entity mindar-image-target="targetIndex: 2">
-        <a-entity scale="0.5 0.5 0.5">
+        <a-entity scale="0.7 0.7 0.7">
             <a-plane color="black" opacity="0.6" width="1.1" height="1.0" position="0 0 -0.01"></a-plane>
             <a-image id="slideshow-1" position="0 0 0" width="1" height="0.75" auto-slideshow="srcs: #slide1-1, #slide1-2, #slide1-3; interval: 3000"></a-image>
             <a-text value="BUILDING A" align="center" position="0 -0.6 0" width="3" color="#fff" font="roboto"></a-text>
@@ -114,7 +114,7 @@ f<!DOCTYPE html>
       </a-entity>
 
       <a-entity mindar-image-target="targetIndex: 3">
-        <a-entity scale="0.5 0.5 0.5">
+        <a-entity scale="0.7 0.7 0.7">
             <a-plane color="black" opacity="0.6" width="1.1" height="1.0" position="0 0 -0.01"></a-plane>
             <a-image id="slideshow-2" position="0 0 0" width="1" height="0.75" auto-slideshow="srcs: #slide2-1, #slide2-2, #slide2-3; interval: 3000"></a-image>
             <a-text value="BUILDING B" align="center" position="0 -0.6 0" width="3" color="#fff" font="roboto"></a-text>
