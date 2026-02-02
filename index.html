@@ -46,16 +46,19 @@
         
         <a-box color="blue" opacity="0.3" position="0 0 0" scale="0.5 0.5 0.5"></a-box>
 
-        <a-entity gltf-model="#model-glb" 
-                  position="29 -0.5 2" 
-                  scale="1 1 1"
-                  rotation="0 0 0"
-                  animation="property: rotation; to: 0 360 0; dur: 20000; loop: true; easing: linear">
+        <a-entity id="model-wrapper" position="0 0 0" rotation="0 0 0">
+            
+            <a-entity gltf-model="#model-glb" 
+                      position="0 0 0" 
+                      scale="1 1 1"
+                      rotation="0 0 0">
+            </a-entity>
+
+        </a-entity>
         </a-entity>
 
-      </a-entity>
-
       <a-entity id="target-outside" mindar-image-target="targetIndex: 2"></a-entity>
+      
       <a-entity id="target-card" mindar-image-target="targetIndex: 3">
         <a-entity id="magic-circle-container" scale="0 0 0"
                   animation__appear="property: scale; to: 0.6 0.6 0.6; dur: 2000; easing: easeOutCubic; startEvents: appear"
@@ -76,7 +79,7 @@
         createCircularText();
       });
 
-      // 円形テキスト生成関数（維持）
+      // 円形テキスト生成関数
       const textRing = document.getElementById('circular-text-ring');
       function createCircularText() {
         if(!textRing) return;
@@ -100,7 +103,7 @@
         }
       }
       
-      // その他のイベントリスナーも維持
+      // イベントリスナー
       const targetCard = document.getElementById('target-card');
       const magicCircle = document.getElementById('magic-circle-container');
       if(targetCard && magicCircle){
