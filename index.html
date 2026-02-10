@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     
     <script>
-      // ▼▼▼ 1. ジェスチャー検出 ▼▼▼
+      // ▼▼▼ 1. ジェスチャー検出 (変更なし) ▼▼▼
       AFRAME.registerComponent("gesture-detector", {
         schema: { element: { default: "" } },
         init: function() {
@@ -49,12 +49,12 @@
         }
       });
 
-      // ▼▼▼ 2. ジェスチャー操作 ▼▼▼
+      // ▼▼▼ 2. ジェスチャー操作ロジック (★ここを修正しました★) ▼▼▼
       AFRAME.registerComponent("gesture-handler", {
         schema: {
           enabled: { default: true },
           rotationFactor: { default: 5 },
-          minScale: { default: 0.1 },
+          minScale: { default: 0.3 }, // 最小サイズを下回りすぎないように調整
           maxScale: { default: 8 },
         },
         init: function() {
@@ -81,8 +81,20 @@
         },
         handleScale: function(event) {
           if (this.isVisible) {
-            this.scaleFactor *= 1 + event.detail.spreadChange / event.detail.spread;
+            // 【修正】以前の計算式では急速な縮小でマイナス値になり消滅していました。
+            // 以下の「現在の幅 / さっきの幅」の比率計算ならマイナスになりません。
+            const previousSpread = event.detail.spread - event.detail.spreadChange;
+            
+            // ゼロ除算防止
+            if (previousSpread === 0) return;
+
+            const scaleChange = event.detail.spread / previousSpread;
+            
+            this.scaleFactor *= scaleChange;
+            
+            // 最小・最大サイズの制限
             this.scaleFactor = Math.min(Math.max(this.scaleFactor, this.data.minScale), this.data.maxScale);
+            
             this.el.object3D.scale.x = this.scaleFactor * this.initialScale.x;
             this.el.object3D.scale.y = this.scaleFactor * this.initialScale.y;
             this.el.object3D.scale.z = this.scaleFactor * this.initialScale.z;
@@ -188,7 +200,7 @@
         <video id="vid-asset" src="./fl.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline muted></video>
         <a-asset-item id="model-asset" src="./model2.glb"></a-asset-item>
         
-        <img id="slide1-2" src="./pers_1_sub1.png" /><img id="slide1-3" src="./pers_1_sub2.png" />
+        <img id="slide1-1" src="./pers_1.png" /><img id="slide1-2" src="./pers_1_sub1.png" /><img id="slide1-3" src="./pers_1_sub2.png" />
         <img id="slide1-4" src="./pers_1_sub3.png" /><img id="slide1-5" src="./pers_1_sub4.png" /><img id="slide1-6" src="./pers_1_sub5.png" />
         <img id="slide1-7" src="./pers_1_sub6.png" /><img id="slide1-8" src="./pers_1_sub7.png" /> 
         
@@ -205,7 +217,6 @@
       <a-entity mindar-image-target="targetIndex: 0">
         <a-entity scale="0.3 0.3 0.3">
            <a-video id="ar-video" src="#vid-asset" width="1" height="1.77"></a-video>
-           
            <a-text value="MOVIE CLIP" align="center" position="0 -1.0 0" width="4" color="#fff" 
                    font="roboto" shader="msdf" negate="false"
                    text="shadowColor: #000; shadowBlur: 2; shadowOffsetX: 1; shadowOffsetY: 1;"></a-text>
@@ -216,7 +227,7 @@
         <a-entity scale="0.1 0.1 0.1">
            <a-entity id="ar-model" gltf-model="#model-asset" 
                      class="clickable"
-                     gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5"
+                     gesture-handler="minScale: 0.3; maxScale: 8; rotationFactor: 5"
                      rotation="0 0 0">
            </a-entity>
            <a-text value="3D MODEL VIEW" align="center" position="0 -1.5 0" scale="2 2 2" width="4" color="#fff" 
@@ -230,7 +241,7 @@
             <a-plane color="#000" opacity="0.3" width="1.05" height="0.8" position="0.02 -0.02 -0.01"></a-plane>
             
             <a-image id="slideshow-1" position="0 0 0" width="1" height="0.75" 
-                     auto-slideshow="srcs: #slide1-2, #slide1-3, #slide1-4, #slide1-5, #slide1-6, #slide1-7, #slide1-8; interval: 3000">
+                     auto-slideshow="srcs: #slide1-1, #slide1-2, #slide1-3, #slide1-4, #slide1-5, #slide1-6, #slide1-7, #slide1-8; interval: 3000">
             </a-image>
             
             <a-text value="BUILDING A" align="center" position="0 -0.55 0" width="4" color="#fff" 
