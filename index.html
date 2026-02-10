@@ -158,8 +158,8 @@
       <a-assets>
         <video id="vid-asset" src="./fl.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline muted></video>
         <a-asset-item id="model-asset" src="./model2.glb"></a-asset-item>
-        <img id="slide1-1" src="./pers_1.png" /><img id="slide1-2" src="./pers_1_sub1.png" /><img id="slide1-3" src="./pers_1_sub2.png" /> 
-        <img id="slide2-1" src="./pers_2.png" /><img id="slide2-2" src="./pers_2_sub1.png" /><img id="slide2-3" src="./pers_2_sub2.png" />
+        <img id="slide1-1" src="./pers_1.png" /><img id="slide1-2" src="./pers_1_sub1.png" /><img id="slide1-3" src="./pers_1_sub2.png" /><img id="slide1-4" src="./pers_1_sub3.png" /><img id="slide1-5" src="./pers_1_sub4.png" /><img id="slide1-6" src="./pers_1_sub5.png" /><img id="slide1-7" src="./pers_1_sub6.png" /><img id="slide1-8" src="./pers_1_sub7.png" /> 
+        <img id="slide2-1" src="./pers_2.png" /><img id="slide2-2" src="./pers_2_sub1.png" /><img id="slide2-3" src="./pers_2_sub2.png" /><img id="slide2-4" src="./pers_2_sub3.png" /><img id="slide2-5" src="./pers_2_sub5.png" /><img id="slide2-6" src="./pers_2_sub5.png" /><img id="slide2-7" src="./pers_2_sub6.png" /><img id="slide2-8" src="./pers_2_sub7.png" /><img id="slide2-9" src="./pers_2_sub8.png" /><img id="slide2-10" src="./pers_2_sub9.png" /><img id="slide2-11" src="./pers_2_sub10.png" /><img id="slide2-12" src="./pers_2_sub11.png" />
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false">
@@ -175,7 +175,7 @@
       </a-entity>
 
       <a-entity mindar-image-target="targetIndex: 1">
-        <a-entity scale="0.2 0.2 0.2">
+        <a-entity scale="0.1 0.1 0.1">
            <a-entity id="ar-model" gltf-model="#model-asset" 
                      class="clickable"
                      gesture-handler="minScale: 0.1; maxScale: 10; rotationFactor: 5"
@@ -188,7 +188,7 @@
       <a-entity mindar-image-target="targetIndex: 2">
         <a-entity scale="0.7 0.7 0.7">
             <a-plane color="black" opacity="0.6" width="1.1" height="1.0" position="0 0 -0.01"></a-plane>
-            <a-image id="slideshow-1" position="0 0 0" width="1" height="0.75" auto-slideshow="srcs: #slide1-1, #slide1-2, #slide1-3; interval: 3000"></a-image>
+            <a-image id="slideshow-1" position="0 0 0" width="1" height="0.75" auto-slideshow="srcs: #slide1-1, #slide1-2, #slide1-3, #slide1-4, #slide1-5, #slide1-6, #slide1-7, #slide1-8; interval: 3000"></a-image>
             <a-text value="BUILDING A" align="center" position="0 -0.6 0" width="3" color="#fff" font="roboto"></a-text>
         </a-entity>
       </a-entity>
@@ -196,7 +196,7 @@
       <a-entity mindar-image-target="targetIndex: 3">
         <a-entity scale="0.7 0.7 0.7">
             <a-plane color="black" opacity="0.6" width="1.1" height="1.0" position="0 0 -0.01"></a-plane>
-            <a-image id="slideshow-2" position="0 0 0" width="1" height="0.75" auto-slideshow="srcs: #slide2-1, #slide2-2, #slide2-3; interval: 3000"></a-image>
+            <a-image id="slideshow-2" position="0 0 0" width="1" height="0.75" auto-slideshow="srcs: #slide2-1, #slide2-2, #slide2-3, #slide2-4, #slide2-5, #slide2-6, #slide2-7, #slide2-8, #slide2-9, #slide2-10, #slide2-11, #slide2-12; interval: 3000"></a-image>
             <a-text value="BUILDING B" align="center" position="0 -0.6 0" width="3" color="#fff" font="roboto"></a-text>
         </a-entity>
       </a-entity>
